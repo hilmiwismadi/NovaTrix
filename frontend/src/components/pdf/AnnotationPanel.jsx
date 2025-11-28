@@ -2,7 +2,7 @@
 // Sidebar panel for managing annotations and tagging with controls
 
 import { useState } from 'react';
-import { X, Tag, Trash2, Plus, Check } from 'lucide-react';
+import { X, Tag, Trash2, Plus, Check, Info } from 'lucide-react';
 import Button from '../common/Button';
 import Badge from '../common/Badge';
 
@@ -18,6 +18,7 @@ export default function AnnotationPanel({
 }) {
   const [showControlPicker, setShowControlPicker] = useState(false);
   const [searchControl, setSearchControl] = useState('');
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
 
   // Filter controls for picker
   const filteredControls = controls.filter(control =>
@@ -129,20 +130,34 @@ export default function AnnotationPanel({
                   </div>
                 )}
 
-                {/* Add Control Button (only for selected annotation) */}
+                {/* Action Buttons (only for selected annotation) */}
                 {selectedAnnotation?.id === annotation.id && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowControlPicker(!showControlPicker);
-                    }}
-                    className="flex items-center gap-2 text-xs"
-                  >
-                    <Tag size={14} />
-                    Tag Control
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowControlPicker(!showControlPicker);
+                      }}
+                      className="flex items-center gap-2 text-xs flex-1"
+                    >
+                      <Tag size={14} />
+                      Tag Control
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setShowDetailsModal(true);
+                      }}
+                      className="flex items-center gap-2 text-xs flex-1"
+                    >
+                      <Info size={14} />
+                      Details
+                    </Button>
+                  </div>
                 )}
               </div>
             ))}
@@ -239,6 +254,108 @@ export default function AnnotationPanel({
                   className="w-full"
                 >
                   Done
+                </Button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Details Modal */}
+      {showDetailsModal && selectedAnnotation && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black bg-opacity-30 z-40"
+            onClick={() => setShowDetailsModal(false)}
+          />
+
+          {/* Modal */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+            <div className="bg-white rounded-lg shadow-2xl w-full max-w-md flex flex-col pointer-events-auto">
+              {/* Header */}
+              <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 className="text-lg font-bold text-gray-900">Annotation Details</h3>
+                <button
+                  onClick={() => setShowDetailsModal(false)}
+                  className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded p-1 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              {/* Content */}
+              <div className="p-4 space-y-4">
+                {/* Compliance Status */}
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Compliance Status</label>
+                  <div className="mt-1 flex items-center gap-2">
+                    <div
+                      className="w-6 h-6 rounded border border-gray-300"
+                      style={{ backgroundColor: selectedAnnotation.color }}
+                    />
+                    <span className="text-sm text-gray-700">
+                      {selectedAnnotation.color === '#90EE90' && 'Compliant / Implemented'}
+                      {selectedAnnotation.color === '#FFFF00' && 'Needs Review / To Be Verified'}
+                      {selectedAnnotation.color === '#ADD8E6' && 'Reference / Informational'}
+                      {selectedAnnotation.color === '#FFB6C1' && 'Gap / Non-Compliant'}
+                      {selectedAnnotation.color === '#FFD580' && 'Partially Compliant / In Progress'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Page Number */}
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Page</label>
+                  <p className="text-sm text-gray-900 mt-1">Page {selectedAnnotation.pageNumber}</p>
+                </div>
+
+                {/* Highlighted Text */}
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">Highlighted Text</label>
+                  <p className="text-sm text-gray-900 mt-1 p-3 bg-gray-50 rounded border border-gray-200 max-h-32 overflow-y-auto">
+                    {selectedAnnotation.content}
+                  </p>
+                </div>
+
+                {/* Tagged Controls */}
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">
+                    Tagged Controls ({selectedAnnotation.annotationControls?.length || 0})
+                  </label>
+                  {selectedAnnotation.annotationControls && selectedAnnotation.annotationControls.length > 0 ? (
+                    <div className="mt-2 space-y-2">
+                      {selectedAnnotation.annotationControls.map((ac) => (
+                        <div key={ac.id} className="p-2 bg-cyan-50 rounded border border-cyan-200">
+                          <p className="text-sm font-semibold text-cyan-900">{ac.control.id}</p>
+                          <p className="text-xs text-cyan-700">{ac.control.title}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-500 mt-1">No controls tagged yet</p>
+                  )}
+                </div>
+
+                {/* Timestamp */}
+                {selectedAnnotation.createdAt && (
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase">Created</label>
+                    <p className="text-sm text-gray-900 mt-1">
+                      {new Date(selectedAnnotation.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 border-t border-gray-200 bg-gray-50">
+                <Button
+                  variant="primary"
+                  onClick={() => setShowDetailsModal(false)}
+                  className="w-full"
+                >
+                  Close
                 </Button>
               </div>
             </div>

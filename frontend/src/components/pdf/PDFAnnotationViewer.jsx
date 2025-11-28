@@ -13,13 +13,13 @@ import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/highlight/lib/styles/index.css';
 import '@react-pdf-viewer/zoom/lib/styles/index.css';
 
-// Color options for highlights
+// Color options for highlights with compliance status meanings
 const HIGHLIGHT_COLORS = [
-  { name: 'Yellow', value: '#FFFF00' },
-  { name: 'Green', value: '#90EE90' },
-  { name: 'Blue', value: '#ADD8E6' },
-  { name: 'Pink', value: '#FFB6C1' },
-  { name: 'Orange', value: '#FFD580' }
+  { name: 'Yellow', value: '#FFFF00', status: 'Needs Review / To Be Verified' },
+  { name: 'Green', value: '#90EE90', status: 'Compliant / Implemented' },
+  { name: 'Blue', value: '#ADD8E6', status: 'Reference / Informational' },
+  { name: 'Pink', value: '#FFB6C1', status: 'Gap / Non-Compliant' },
+  { name: 'Orange', value: '#FFD580', status: 'Partially Compliant / In Progress' }
 ];
 
 export default function PDFAnnotationViewer({
@@ -311,7 +311,7 @@ export default function PDFAnnotationViewer({
 
       {/* Color Picker */}
       <div className="absolute top-4 right-4 z-10 bg-white rounded-lg shadow-lg p-3 border border-gray-200">
-        <p className="text-xs font-medium text-gray-700 mb-2">Highlight Color</p>
+        <p className="text-xs font-medium text-gray-700 mb-2">Compliance Status</p>
         <div className="flex gap-2">
           {HIGHLIGHT_COLORS.map((color) => (
             <button
@@ -323,7 +323,7 @@ export default function PDFAnnotationViewer({
                   : 'border-gray-300'
               }`}
               style={{ backgroundColor: color.value }}
-              title={color.name}
+              title={`${color.name}: ${color.status}`}
             />
           ))}
         </div>
