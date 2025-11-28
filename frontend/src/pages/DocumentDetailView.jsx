@@ -77,12 +77,20 @@ export default function DocumentDetailView() {
 
   // Handle control add
   const handleControlAdd = async (annotationId, controlId) => {
-    await addControlToAnnotation(annotationId, controlId);
+    const result = await addControlToAnnotation(annotationId, controlId);
+    if (result.success && selectedAnnotation?.id === annotationId) {
+      // Update selected annotation with the latest data
+      setSelectedAnnotation(result.data);
+    }
   };
 
   // Handle control remove
   const handleControlRemove = async (annotationId, controlId) => {
-    await removeControlFromAnnotation(annotationId, controlId);
+    const result = await removeControlFromAnnotation(annotationId, controlId);
+    if (result.success && selectedAnnotation?.id === annotationId) {
+      // Update selected annotation with the latest data
+      setSelectedAnnotation(result.data);
+    }
   };
 
   if (docLoading) {

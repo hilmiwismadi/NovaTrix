@@ -1,12 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { MessageSquarePlus, User } from 'lucide-react';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import ProgressBar from '../components/common/ProgressBar';
-import { interviews } from '../data/mockInterviews';
+import AddInterviewForm from '../components/interviews/AddInterviewForm';
+import useInterviewStore from '../stores/interviewStore';
 
 export default function InterviewDashboard() {
-  const [selectedInterview, setSelectedInterview] = useState(interviews[0]);
+  const { interviews, isLoading, fetchInterviews } = useInterviewStore();
+  const [selectedInterview, setSelectedInterview] = useState(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  // Fetch interviews on mount
+  useEffect(() => {
+    fetchInterviews();
+  }, [fetchInterviews]);
+
+  // Set first interview as selected when interviews load
+  useEffect(() => {
+    if (interviews.length > 0 && !selectedInterview) {
+      setSelectedInterview(interviews[0]);
+    }
+  }, [interviews, selectedInterview]);
 
   return (
     <div className="space-y-6">
@@ -16,17 +31,47 @@ export default function InterviewDashboard() {
           <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Interviews</h1>
           <p className="text-gray-500 mt-1.5 text-sm">Qualitative Evidence Collector</p>
         </div>
-        <Button variant="primary" className="flex items-center gap-2">
+        <Button
+          variant="primary"
+          className="flex items-center gap-2"
+          onClick={() => setIsAddModalOpen(true)}
+        >
           <MessageSquarePlus size={16} />
           Add New Interview
         </Button>
       </div>
 
+      {/* Loading State */}
+      {isLoading && interviews.length === 0 && (
+        <div className="text-center py-12">
+          <div className="inline-block w-8 h-8 border-4 border-cyan border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-500 mt-4">Loading interviews...</p>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!isLoading && interviews.length === 0 && (
+        <div className="text-center py-12">
+          <MessageSquarePlus size={48} className="mx-auto text-gray-300 mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No Interviews Yet</h3>
+          <p className="text-gray-500 mb-6">Get started by creating your first interview</p>
+          <Button
+            variant="primary"
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center gap-2 mx-auto"
+          >
+            <MessageSquarePlus size={16} />
+            Add New Interview
+          </Button>
+        </div>
+      )}
+
       {/* Interview List & Details */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Interview List */}
-        <div className="lg:col-span-1 space-y-3">
-          {interviews.map((interview) => (
+      {interviews.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Interview List */}
+          <div className="lg:col-span-1 space-y-3">
+            {interviews.map((interview) => (
             <Card
               key={interview.id}
               hoverable
@@ -40,18 +85,26 @@ export default function InterviewDashboard() {
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-gray-900 truncate">{interview.respondent.name}</h3>
                   <p className="text-sm text-gray-600">{interview.respondent.role}</p>
-                  <p className="text-xs text-gray-500 mt-1">{interview.date}</p>
-                  <div className="mt-2">
-                    <div className="flex justify-between items-center text-xs mb-1">
-                      <span className="text-gray-600">Maturity</span>
-                      <span className="font-semibold">{interview.aiAnalysis.maturityScore}/5</span>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {new Date(interview.interviewDate).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric'
+                    })}
+                  </p>
+                  {interview.aiMaturityScore !== null && (
+                    <div className="mt-2">
+                      <div className="flex justify-between items-center text-xs mb-1">
+                        <span className="text-gray-600">Maturity</span>
+                        <span className="font-semibold">{interview.aiMaturityScore}/5</span>
+                      </div>
+                      <ProgressBar
+                        value={interview.aiMaturityScore}
+                        max={5}
+                        showLabel={false}
+                      />
                     </div>
-                    <ProgressBar
-                      value={interview.aiAnalysis.maturityScore}
-                      max={5}
-                      showLabel={false}
-                    />
-                  </div>
+                  )}
                 </div>
               </div>
             </Card>
@@ -78,7 +131,13 @@ export default function InterviewDashboard() {
                 </div>
                 <div>
                   <span className="text-gray-600">Interview Date:</span>
-                  <p className="font-semibold text-gray-900">{selectedInterview.date}</p>
+                  <p className="font-semibold text-gray-900">
+                    {new Date(selectedInterview.interviewDate).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </p>
                 </div>
               </div>
             </Card>
@@ -86,68 +145,101 @@ export default function InterviewDashboard() {
             <Card>
               <h2 className="text-xl font-bold text-gray-900 mb-4">Questions & Answers</h2>
               <div className="space-y-4">
-                {selectedInterview.questions.map((q) => (
-                  <div key={q.id} className="border-b border-gray-200 pb-4 last:border-0">
-                    <p className="font-semibold text-gray-900 mb-2">Q: {q.text}</p>
-                    <p className="text-gray-700 mb-2">A: {q.answer}</p>
-                    <div className="flex flex-wrap gap-1">
-                      {q.annexAMapping.map(control => (
-                        <span key={control} className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded">
-                          {control}
-                        </span>
-                      ))}
+                {selectedInterview.interviewQA && selectedInterview.interviewQA.length > 0 ? (
+                  selectedInterview.interviewQA.map((qa, index) => (
+                    <div key={qa.id} className="border-b border-gray-200 pb-4 last:border-0">
+                      <p className="font-semibold text-gray-900 mb-2">Q{index + 1}: {qa.questionText}</p>
+                      {qa.answerText ? (
+                        <p className="text-gray-700 mb-2">A: {qa.answerText}</p>
+                      ) : (
+                        <p className="text-gray-500 italic mb-2">Answer pending</p>
+                      )}
+                      {qa.interviewQAControls && qa.interviewQAControls.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {qa.interviewQAControls.map(qac => (
+                            <span key={qac.id} className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded">
+                              {qac.control.id}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
-              </div>
-            </Card>
-
-            <Card>
-              <h2 className="text-xl font-bold text-gray-900 mb-4">AI Analysis</h2>
-              <div className="space-y-4">
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Summary</h3>
-                  <p className="text-gray-700">{selectedInterview.aiAnalysis.summary}</p>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Key Statements</h3>
-                  <ul className="list-disc list-inside text-gray-700 space-y-1">
-                    {selectedInterview.aiAnalysis.keyStatements.map((statement, idx) => (
-                      <li key={idx}>{statement}</li>
-                    ))}
-                  </ul>
-                </div>
-
-                {selectedInterview.aiAnalysis.contradictions.length > 0 && (
-                  <div>
-                    <h3 className="font-semibold text-gray-900 mb-2">Contradictions Detected</h3>
-                    <ul className="list-disc list-inside text-orange-700 space-y-1">
-                      {selectedInterview.aiAnalysis.contradictions.map((contradiction, idx) => (
-                        <li key={idx}>{contradiction}</li>
-                      ))}
-                    </ul>
-                  </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-sm">No questions added yet</p>
                 )}
-
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Maturity Score</h3>
-                  <div className="flex items-center gap-4">
-                    <ProgressBar
-                      value={selectedInterview.aiAnalysis.maturityScore}
-                      max={5}
-                      className="flex-1"
-                    />
-                    <span className="text-2xl font-bold text-gray-900">
-                      {selectedInterview.aiAnalysis.maturityScore}/5
-                    </span>
-                  </div>
-                </div>
               </div>
             </Card>
+
+            {selectedInterview.aiSummary && (
+              <Card>
+                <h2 className="text-xl font-bold text-gray-900 mb-4">AI Analysis</h2>
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-semibold text-gray-900 mb-2">Summary</h3>
+                    <p className="text-gray-700">{selectedInterview.aiSummary}</p>
+                  </div>
+
+                  {selectedInterview.aiKeyStatements && (
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-2">Key Statements</h3>
+                      <ul className="list-disc list-inside text-gray-700 space-y-1">
+                        {JSON.parse(selectedInterview.aiKeyStatements).map((statement, idx) => (
+                          <li key={idx}>{statement}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {selectedInterview.aiContradictions && JSON.parse(selectedInterview.aiContradictions).length > 0 && (
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-2">Contradictions Detected</h3>
+                      <ul className="list-disc list-inside text-orange-700 space-y-1">
+                        {JSON.parse(selectedInterview.aiContradictions).map((contradiction, idx) => (
+                          <li key={idx}>{contradiction}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {selectedInterview.aiMaturityScore !== null && (
+                    <div>
+                      <h3 className="font-semibold text-gray-900 mb-2">Maturity Score</h3>
+                      <div className="flex items-center gap-4">
+                        <ProgressBar
+                          value={selectedInterview.aiMaturityScore}
+                          max={5}
+                          className="flex-1"
+                        />
+                        <span className="text-2xl font-bold text-gray-900">
+                          {selectedInterview.aiMaturityScore}/5
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
+            {!selectedInterview.aiSummary && (
+              <Card>
+                <h2 className="text-xl font-bold text-gray-900 mb-4">AI Analysis</h2>
+                <p className="text-gray-500 text-sm">AI analysis will be available after the interview is completed and analyzed.</p>
+              </Card>
+            )}
           </div>
         )}
       </div>
+      )}
+
+      {/* Add Interview Modal */}
+      <AddInterviewForm
+        isOpen={isAddModalOpen}
+        onClose={() => setIsAddModalOpen(false)}
+        onSuccess={() => {
+          setIsAddModalOpen(false);
+          fetchInterviews();
+        }}
+      />
     </div>
   );
 }

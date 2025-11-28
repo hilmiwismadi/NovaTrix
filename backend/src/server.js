@@ -8,6 +8,7 @@ import authRoutes from './routes/auth.routes.js';
 import documentsRoutes from './routes/documents.routes.js';
 import annotationsRoutes from './routes/annotations.routes.js';
 import controlsRoutes from './routes/controls.routes.js';
+import interviewsRoutes from './routes/interviews.routes.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
 // Load environment variables
@@ -18,15 +19,19 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors({
-  origin: [
-    process.env.FRONTEND_URL || 'http://localhost:5174',
-    'http://localhost:5173',
-    'http://localhost:5174',
-    'http://localhost:5175',
-    'http://localhost:5176',
-    'http://localhost:5177',
-    'http://localhost:5178'
-  ],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    // Check if origin matches localhost:5173-5183 pattern
+    const allowedPattern = /^http:\/\/localhost:(517[3-9]|518[0-3])$/;
+
+    if (allowedPattern.test(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json());
@@ -54,6 +59,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/documents', documentsRoutes);
 app.use('/api/annotations', annotationsRoutes);
 app.use('/api/controls', controlsRoutes);
+app.use('/api/interviews', interviewsRoutes);
 
 // 404 handler
 app.use(notFoundHandler);
@@ -65,7 +71,7 @@ app.use(errorHandler);
 app.listen(PORT, () => {
   console.log(`🚀 NovaTrix Backend Server running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`🌐 CORS enabled for: ${process.env.FRONTEND_URL || 'http://localhost:5173'}`);
+  console.log(`🌐 CORS enabled for: http://localhost:5173-5183`);
   console.log(`\n✅ Server ready to accept requests`);
 });
 

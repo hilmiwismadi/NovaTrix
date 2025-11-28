@@ -96,7 +96,7 @@ export const createAnnotation = async (req, res) => {
         color: color || '#FFFF00',
         annotationControls: {
           create: controlIds.map(controlId => ({
-            controlId: parseInt(controlId)
+            controlId: controlId // controlId is a string like "A.5.1"
           }))
         }
       },
@@ -168,7 +168,7 @@ export const updateAnnotation = async (req, res) => {
       // Create new links
       updateData.annotationControls = {
         create: controlIds.map(controlId => ({
-          controlId: parseInt(controlId)
+          controlId: controlId // controlId is a string like "A.5.1"
         }))
       };
     }
@@ -266,7 +266,7 @@ export const addControlToAnnotation = async (req, res) => {
 
     // Check if control exists
     const control = await prisma.annexAControl.findUnique({
-      where: { id: parseInt(controlId) }
+      where: { id: controlId } // controlId is a string like "A.5.1", not an integer
     });
 
     if (!control) {
@@ -281,7 +281,7 @@ export const addControlToAnnotation = async (req, res) => {
       await prisma.annotationControl.create({
         data: {
           annotationId: parseInt(id),
-          controlId: parseInt(controlId)
+          controlId: controlId // controlId is a string like "A.5.1"
         }
       });
 
@@ -332,7 +332,7 @@ export const removeControlFromAnnotation = async (req, res) => {
     const link = await prisma.annotationControl.findFirst({
       where: {
         annotationId: parseInt(id),
-        controlId: parseInt(controlId)
+        controlId: controlId // controlId is a string like "A.5.1"
       }
     });
 
