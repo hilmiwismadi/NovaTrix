@@ -1,0 +1,14 @@
+Read and understand of project context and tell me before execute to crosscheck claude understanding, then
+
+To make the flow more clear, for now i create a flow of dashboard without any AI logic implementation
+
+Flow:
+1. Login into dashboard
+2. Since this thesis only have 1 scope project of 4 month to analyze DTI (Direktorat Teknologi Informasi) UGM Organization then the dashboard only discuss this topic only
+3. There will be 3-7 documents that want to be analyzed. Save it in /documents then when one of the cards is clicked it will redirect to /documents/[slug]. 
+4. The /documents/[slug] have header section of Summary, Percentage that have been read, Annex A mapping, Gap Analysis that been founded
+5. Left side is the pdf/document reader and the right side can highlight or give pin point of what annex it is related to and important core of the paragraph/clause/chapter 
+6. Another page will be /controls the set list card of Annex A controls. When it clicked it will have pop up with information Description, related document pin point that have that specific Annex A and when it click it will redirect to that document and paragraph/clause/chapter, compliance rating for each document and explanation 
+7. For /interviews create a button so Auditor can create new respondent and new input of setlist of question. Create new forms to do that, so before interview the auditor will prepare the question that relevant
+
+If this manual process dashboard (without AI help) is implemented well, then we can start to add AI feature with precise funtionality

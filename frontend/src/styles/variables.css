@@ -1,0 +1,78 @@
+/* NovaTrix Design System - Variables */
+
+:root {
+  /* Primary Colors */
+  --color-white: #FFFFFF;
+  --color-background: #FFFFFF;
+
+  /* Accent - Cyan */
+  --color-cyan: #00FFFF;
+  --color-cyan-dark: #00CCCC;
+  --color-cyan-light: #33FFFF;
+
+  /* Grayscale Hierarchy */
+  --color-gray-100: #F5F5F5;
+  --color-gray-200: #EEEEEE;
+  --color-gray-300: #E0E0E0;
+  --color-gray-500: #9E9E9E;
+  --color-gray-700: #616161;
+  --color-gray-900: #212121;
+
+  /* Typography Colors */
+  --color-text-primary: #222222;
+  --color-text-secondary: #444444;
+  --color-text-tertiary: #888888;
+
+  /* Status Colors */
+  --color-success: #00CC88;
+  --color-success-bg: #E6F9F5;
+  --color-success-border: #00805A;
+
+  --color-warning: #FFA500;
+  --color-warning-bg: #FFF5E6;
+  --color-warning-border: #CC7A00;
+
+  --color-error: #FF4444;
+  --color-error-bg: #FFE6E6;
+  --color-error-border: #CC0000;
+
+  /* Spacing (8px grid) */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  --spacing-2xl: 48px;
+  --spacing-3xl: 64px;
+
+  /* Border Radius (Sharper for engineered feel) */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  /* Border Widths (Fine precision) */
+  --border-thin: 1px;
+  --border-medium: 1.5px;
+
+  /* Shadows (minimal) */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
+
+  /* Neumorphic Shadows (Subtle tactility) */
+  --shadow-neumorphic-sm: 2px 2px 4px rgba(0, 0, 0, 0.08), -1px -1px 3px rgba(255, 255, 255, 0.6);
+  --shadow-neumorphic-inset: inset 1px 1px 2px rgba(0, 0, 0, 0.08), inset -1px -1px 2px rgba(255, 255, 255, 0.5);
+
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-bg-strong: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(0, 255, 255, 0.1);
+  --glass-border-gray: rgba(0, 0, 0, 0.1);
+  --glass-blur: 12px;
+
+  /* Transitions */
+  --transition-base: 250ms ease;
+
+  /* Layout */
+  --sidebar-width: 240px;
+  --header-height: 64px;
+}

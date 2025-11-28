@@ -1,0 +1,12 @@
+.app-layout {
+  min-height: 100vh;
+  background: var(--color-background);
+}
+
+.main-content {
+  margin-left: var(--sidebar-width);
+  margin-top: var(--header-height);
+  padding: var(--spacing-xl);
+  min-height: calc(100vh - var(--header-height));
+  background: var(--color-gray-100);
+}
