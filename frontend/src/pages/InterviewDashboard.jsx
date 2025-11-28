@@ -1,15 +1,20 @@
 import { useState, useEffect } from 'react';
-import { MessageSquarePlus, User } from 'lucide-react';
+import { MessageSquarePlus, User, Edit, Trash2, X } from 'lucide-react';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import ProgressBar from '../components/common/ProgressBar';
 import AddInterviewForm from '../components/interviews/AddInterviewForm';
+import EditInterviewForm from '../components/interviews/EditInterviewForm';
 import useInterviewStore from '../stores/interviewStore';
 
 export default function InterviewDashboard() {
-  const { interviews, isLoading, fetchInterviews } = useInterviewStore();
+  const { interviews, isLoading, deleteInterview, fetchInterviews, fetchInterviewById } = useInterviewStore();
   const [selectedInterview, setSelectedInterview] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [interviewToDelete, setInterviewToDelete] = useState(null);
+  const [interviewToEdit, setInterviewToEdit] = useState(null);
 
   // Fetch interviews on mount
   useEffect(() => {
@@ -22,6 +27,47 @@ export default function InterviewDashboard() {
       setSelectedInterview(interviews[0]);
     }
   }, [interviews, selectedInterview]);
+
+  // Handle delete
+  const handleDeleteClick = (interview) => {
+    setInterviewToDelete(interview);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (interviewToDelete) {
+      const result = await deleteInterview(interviewToDelete.id);
+      if (result.success) {
+        setIsDeleteModalOpen(false);
+        setInterviewToDelete(null);
+        // If deleted interview was selected, select the first one
+        if (selectedInterview?.id === interviewToDelete.id) {
+          setSelectedInterview(interviews.length > 1 ? interviews[0] : null);
+        }
+      }
+    }
+  };
+
+  // Handle edit
+  const handleEditClick = async (interview) => {
+    // Fetch full interview details including Q&A
+    const result = await fetchInterviewById(interview.id);
+    if (result.success) {
+      setInterviewToEdit(result.data);
+      setIsEditModalOpen(true);
+    }
+  };
+
+  const handleEditSuccess = () => {
+    fetchInterviews();
+    if (selectedInterview) {
+      fetchInterviewById(selectedInterview.id).then(result => {
+        if (result.success) {
+          setSelectedInterview(result.data);
+        }
+      });
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -114,6 +160,28 @@ export default function InterviewDashboard() {
         {/* Interview Details */}
         {selectedInterview && (
           <div className="lg:col-span-2 space-y-4">
+            {/* Action Buttons */}
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => handleEditClick(selectedInterview)}
+                className="flex items-center gap-2"
+              >
+                <Edit size={16} />
+                Edit
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => handleDeleteClick(selectedInterview)}
+                className="flex items-center gap-2 text-red-600 hover:bg-red-50"
+              >
+                <Trash2 size={16} />
+                Delete
+              </Button>
+            </div>
+
             <Card>
               <h2 className="text-xl font-bold text-gray-900 mb-4">Respondent Information</h2>
               <div className="grid grid-cols-2 gap-4 text-sm">
@@ -240,6 +308,55 @@ export default function InterviewDashboard() {
           fetchInterviews();
         }}
       />
+
+      {/* Edit Interview Modal */}
+      <EditInterviewForm
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setInterviewToEdit(null);
+        }}
+        onSuccess={handleEditSuccess}
+        interview={interviewToEdit}
+      />
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <>
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40" onClick={() => setIsDeleteModalOpen(false)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+            <div className="bg-white rounded-lg shadow-glass w-full max-w-md pointer-events-auto border border-gray-200/50">
+              <div className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="flex-shrink-0 w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                    <Trash2 className="text-red-600" size={24} />
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Interview</h3>
+                    <p className="text-sm text-gray-600 mb-4">
+                      Are you sure you want to delete the interview with{' '}
+                      <span className="font-semibold">{interviewToDelete?.respondent.name}</span>?
+                      This action cannot be undone.
+                    </p>
+                    <div className="flex justify-end gap-3">
+                      <Button variant="secondary" onClick={() => setIsDeleteModalOpen(false)}>
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="primary"
+                        onClick={handleDeleteConfirm}
+                        className="bg-red-600 hover:bg-red-700"
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

@@ -431,7 +431,213 @@ async function main() {
   });
   console.log(`✓ Created user: ${user.email}`);
 
+  // Create sample respondents
+  console.log('\nCreating sample respondents...');
+  const respondents = [
+    {
+      name: 'Dr. Ahmad Susanto',
+      role: 'Head of IT Security',
+      division: 'Directorate of IT (DTI)',
+      email: 'ahmad.susanto@ugm.ac.id',
+      phone: '0274-123-4567',
+      notes: 'Primary contact for security policy matters. Available Mon-Wed.'
+    },
+    {
+      name: 'Ibu Siti Nurhaliza',
+      role: 'Data Protection Officer',
+      division: 'Directorate of IT (DTI)',
+      email: 'siti.nurhaliza@ugm.ac.id',
+      phone: '0274-234-5678',
+      notes: 'Handles compliance and privacy issues. Prefers email communication.'
+    },
+    {
+      name: 'Bapak Bambang Wijaya',
+      role: 'Infrastructure Manager',
+      division: 'Directorate of IT (DTI)',
+      email: 'bambang.wijaya@ugm.ac.id',
+      phone: '0274-345-6789',
+      notes: 'Manages physical and cloud infrastructure. Best contacted in the afternoon.'
+    }
+  ];
+
+  for (const respondent of respondents) {
+    const existing = await prisma.respondent.findFirst({
+      where: { email: respondent.email }
+    });
+
+    if (!existing) {
+      await prisma.respondent.create({
+        data: respondent
+      });
+      console.log(`✓ Created respondent: ${respondent.name} - ${respondent.role}`);
+    } else {
+      console.log(`  Respondent already exists: ${respondent.name}`);
+    }
+  }
+
   // Create Annex A controls with suggested actions
+  // Create sample questions for question bank
+  console.log('\nCreating sample questions...');
+  const sampleQuestions = [
+    {
+      questionText: 'How does your organization manage access control to sensitive information systems?',
+      questionCategory: 'Technical',
+      targetControls: JSON.stringify(['A.5.15', 'A.8.2', 'A.8.3'])
+    },
+    {
+      questionText: 'What policies and procedures are in place for information security awareness training?',
+      questionCategory: 'Policy',
+      targetControls: JSON.stringify(['A.6.3'])
+    },
+    {
+      questionText: 'Describe the backup and recovery procedures for critical systems.',
+      questionCategory: 'Process',
+      targetControls: JSON.stringify(['A.5.30', 'A.8.13'])
+    },
+    {
+      questionText: 'How are security incidents reported and managed within the organization?',
+      questionCategory: 'Process',
+      targetControls: JSON.stringify(['A.6.8'])
+    },
+    {
+      questionText: 'What measures are in place to ensure physical security of server rooms and data centers?',
+      questionCategory: 'Physical',
+      targetControls: JSON.stringify(['A.7.1', 'A.7.2', 'A.7.4'])
+    }
+  ];
+
+  const createdQuestions = [];
+  for (const question of sampleQuestions) {
+    const created = await prisma.question.create({
+      data: {
+        ...question,
+        createdById: user.id
+      }
+    });
+    createdQuestions.push(created);
+    console.log(`✓ Created question: ${question.questionText.substring(0, 50)}...`);
+  }
+
+  // Create sample interviews
+  console.log('\nCreating sample interviews...');
+
+  // Get the created respondents
+  const allRespondents = await prisma.respondent.findMany();
+
+  if (allRespondents.length >= 2) {
+    // Interview 1 - with Dr. Ahmad (completed)
+    const interview1 = await prisma.interview.create({
+      data: {
+        respondentId: allRespondents[0].id,
+        interviewDate: new Date('2024-11-10'),
+        interviewerId: user.id,
+        status: 'completed',
+        aiSummary: 'The respondent demonstrated strong understanding of security policies and procedures. DTI has established comprehensive documentation for access control and incident management. However, there are gaps in consistent enforcement and staff awareness.',
+        aiKeyStatements: JSON.stringify([
+          'We have documented security policies that are reviewed quarterly',
+          'Multi-factor authentication is being rolled out across critical systems',
+          'Security awareness training completion rate is approximately 75%'
+        ]),
+        aiContradictions: JSON.stringify([
+          'Claimed all staff complete training, but records show only 75% completion'
+        ]),
+        aiMaturityScore: 3.5,
+        interviewQA: {
+          create: [
+            {
+              questionId: createdQuestions[0].id,
+              questionText: createdQuestions[0].questionText,
+              answerText: 'We use role-based access control (RBAC) with regular reviews every 6 months. Multi-factor authentication is implemented for all privileged accounts and we are expanding it to all users by Q1 2025.',
+              questionOrder: 1,
+              interviewQAControls: {
+                create: [
+                  { controlId: 'A.8.2' },
+                  { controlId: 'A.8.3' }
+                ]
+              }
+            },
+            {
+              questionId: createdQuestions[1].id,
+              questionText: createdQuestions[1].questionText,
+              answerText: 'We conduct annual security awareness training for all staff. The training covers phishing, password security, and data handling. Completion rate is tracked but enforcement could be better.',
+              questionOrder: 2,
+              interviewQAControls: {
+                create: [
+                  { controlId: 'A.6.3' }
+                ]
+              }
+            },
+            {
+              questionId: createdQuestions[3].id,
+              questionText: createdQuestions[3].questionText,
+              answerText: 'We have a help desk ticketing system where incidents can be reported. Major incidents are escalated to the security team. We are working on implementing a dedicated security incident reporting channel.',
+              questionOrder: 3,
+              interviewQAControls: {
+                create: [
+                  { controlId: 'A.6.8' }
+                ]
+              }
+            }
+          ]
+        }
+      }
+    });
+    console.log(`✓ Created interview 1 with ${allRespondents[0].name}`);
+
+    // Interview 2 - with Ibu Siti (scheduled)
+    const interview2 = await prisma.interview.create({
+      data: {
+        respondentId: allRespondents[1].id,
+        interviewDate: new Date('2024-12-05'),
+        interviewerId: user.id,
+        status: 'scheduled',
+        interviewQA: {
+          create: [
+            {
+              questionId: createdQuestions[1].id,
+              questionText: createdQuestions[1].questionText,
+              questionOrder: 1
+            },
+            {
+              questionText: 'What is the process for handling personal data under privacy regulations?',
+              questionOrder: 2,
+              interviewQAControls: {
+                create: [
+                  { controlId: 'A.5.1' }
+                ]
+              }
+            },
+            {
+              questionText: 'How are data protection impact assessments conducted?',
+              questionOrder: 3
+            }
+          ]
+        }
+      }
+    });
+    console.log(`✓ Created interview 2 with ${allRespondents[1].name}`);
+
+    // Create activities for the interviews
+    await prisma.activity.createMany({
+      data: [
+        {
+          userId: user.id,
+          activityType: 'interview_created',
+          entityType: 'interviews',
+          entityId: interview1.id,
+          description: `Created interview with ${allRespondents[0].name}`
+        },
+        {
+          userId: user.id,
+          activityType: 'interview_created',
+          entityType: 'interviews',
+          entityId: interview2.id,
+          description: `Created interview with ${allRespondents[1].name}`
+        }
+      ]
+    });
+  }
+
   console.log('\nCreating Annex A controls...');
   for (const control of annexAControls) {
     const { suggestedActions, ...controlData } = control;
@@ -451,6 +657,9 @@ async function main() {
 
   console.log(`\n✅ Seed completed successfully!`);
   console.log(`   - 1 user created`);
+  console.log(`   - 3 respondents created`);
+  console.log(`   - 5 sample questions created`);
+  console.log(`   - 2 sample interviews created`);
   console.log(`   - ${annexAControls.length} Annex A controls created`);
   console.log(`\nDefault credentials:`);
   console.log(`   Email: admin@novatrix.local`);

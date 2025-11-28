@@ -9,6 +9,10 @@ const prisma = new PrismaClient();
  * Get all interviews with respondent data
  */
 export const getInterviews = async (req, res) => {
+  console.log('📥 [getInterviews] Request received');
+  console.log('📥 [getInterviews] Query params:', req.query);
+  console.log('📥 [getInterviews] User:', req.user);
+
   try {
     const { status } = req.query;
 
@@ -18,6 +22,7 @@ export const getInterviews = async (req, res) => {
       where.status = status;
     }
 
+    console.log('🔍 [getInterviews] Querying database with where:', where);
     const interviews = await prisma.interview.findMany({
       where,
       include: {
@@ -47,6 +52,8 @@ export const getInterviews = async (req, res) => {
       }
     });
 
+    console.log('✅ [getInterviews] Found', interviews.length, 'interviews');
+
     res.json({
       interviews,
       total: interviews.length
@@ -66,8 +73,13 @@ export const getInterviews = async (req, res) => {
  * Get single interview with full details
  */
 export const getInterviewById = async (req, res) => {
+  console.log('📥 [getInterviewById] Request received');
+  console.log('📥 [getInterviewById] ID:', req.params.id);
+
   try {
     const { id } = req.params;
+
+    console.log('🔍 [getInterviewById] Fetching interview from database...');
 
     const interview = await prisma.interview.findUnique({
       where: { id: parseInt(id) },
@@ -88,8 +100,8 @@ export const getInterviewById = async (req, res) => {
                 control: {
                   select: {
                     id: true,
-                    controlTitle: true,
-                    controlCategory: true
+                    title: true,
+                    category: true
                   }
                 }
               }
@@ -102,6 +114,13 @@ export const getInterviewById = async (req, res) => {
       }
     });
 
+    console.log('📊 [getInterviewById] Interview found:', interview ? 'Yes' : 'No');
+    if (interview) {
+      console.log('📊 [getInterviewById] Interview ID:', interview.id);
+      console.log('📊 [getInterviewById] Respondent:', interview.respondent?.name);
+      console.log('📊 [getInterviewById] Q&A count:', interview.interviewQA?.length);
+    }
+
     if (!interview) {
       return res.status(404).json({
         error: 'Not found',
@@ -109,13 +128,17 @@ export const getInterviewById = async (req, res) => {
       });
     }
 
+    console.log('✅ [getInterviewById] Returning interview data');
     res.json({ interview });
 
   } catch (error) {
-    console.error('Get interview error:', error);
+    console.error('❌ [getInterviewById] Error details:', error);
+    console.error('❌ [getInterviewById] Error message:', error.message);
+    console.error('❌ [getInterviewById] Error stack:', error.stack);
     res.status(500).json({
       error: 'Internal server error',
-      message: 'Failed to fetch interview'
+      message: 'Failed to fetch interview',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
@@ -125,6 +148,10 @@ export const getInterviewById = async (req, res) => {
  * Create new interview
  */
 export const createInterview = async (req, res) => {
+  console.log('📤 [createInterview] Request received');
+  console.log('📤 [createInterview] Body:', JSON.stringify(req.body, null, 2));
+  console.log('📤 [createInterview] User:', req.user);
+
   try {
     const { respondentId, newRespondent, interviewDate, questions } = req.body;
 
@@ -284,8 +311,8 @@ export const createInterview = async (req, res) => {
                   control: {
                     select: {
                       id: true,
-                      controlTitle: true,
-                      controlCategory: true
+                      title: true,
+                      category: true
                     }
                   }
                 }
@@ -300,6 +327,8 @@ export const createInterview = async (req, res) => {
 
       return completeInterview;
     });
+
+    console.log('✅ [createInterview] Interview created successfully, ID:', result.id);
 
     res.status(201).json({
       message: 'Interview created successfully',
@@ -343,6 +372,8 @@ export const createInterview = async (req, res) => {
  * Get all respondents for selection dropdown
  */
 export const getRespondents = async (req, res) => {
+  console.log('📥 [getRespondents] Request received');
+
   try {
     const respondents = await prisma.respondent.findMany({
       select: {
@@ -358,6 +389,8 @@ export const getRespondents = async (req, res) => {
       }
     });
 
+    console.log('✅ [getRespondents] Found', respondents.length, 'respondents');
+
     res.json({
       respondents,
       total: respondents.length
@@ -368,6 +401,246 @@ export const getRespondents = async (req, res) => {
     res.status(500).json({
       error: 'Internal server error',
       message: 'Failed to fetch respondents'
+    });
+  }
+};
+
+/**
+ * PUT /api/interviews/:id
+ * Update interview (including respondent and Q&A)
+ */
+export const updateInterview = async (req, res) => {
+  console.log('📝 [updateInterview] Request received');
+  console.log('📝 [updateInterview] ID:', req.params.id);
+  console.log('📝 [updateInterview] Body:', JSON.stringify(req.body, null, 2));
+
+  try {
+    const { id } = req.params;
+    const { interviewDate, status, respondentData, questions } = req.body;
+
+    // Check if interview exists
+    const interview = await prisma.interview.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        respondent: true
+      }
+    });
+
+    if (!interview) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Interview not found'
+      });
+    }
+
+    // Use transaction for atomic updates
+    const result = await prisma.$transaction(async (tx) => {
+      // Update respondent if data provided
+      if (respondentData) {
+        await tx.respondent.update({
+          where: { id: interview.respondentId },
+          data: {
+            ...(respondentData.name && { name: respondentData.name }),
+            ...(respondentData.role && { role: respondentData.role }),
+            ...(respondentData.division !== undefined && { division: respondentData.division }),
+            ...(respondentData.email !== undefined && { email: respondentData.email }),
+            ...(respondentData.phone !== undefined && { phone: respondentData.phone }),
+            ...(respondentData.notes !== undefined && { notes: respondentData.notes })
+          }
+        });
+      }
+
+      // Update questions if provided
+      if (questions && Array.isArray(questions)) {
+        // Delete existing Q&A and their controls
+        await tx.interviewQA.deleteMany({
+          where: { interviewId: parseInt(id) }
+        });
+
+        // Create new Q&A records
+        for (let i = 0; i < questions.length; i++) {
+          const q = questions[i];
+
+          // Verify questionId exists if provided
+          if (q.questionId) {
+            const existingQuestion = await tx.question.findUnique({
+              where: { id: q.questionId }
+            });
+            if (!existingQuestion) {
+              throw new Error(`QUESTION_NOT_FOUND: ${q.questionId}`);
+            }
+          }
+
+          // Create InterviewQA record
+          const interviewQA = await tx.interviewQA.create({
+            data: {
+              interviewId: parseInt(id),
+              questionId: q.questionId || null,
+              questionText: q.questionText.trim(),
+              answerText: q.answerText || null,
+              questionOrder: i + 1
+            }
+          });
+
+          // Create control mappings if provided
+          if (q.controls && Array.isArray(q.controls) && q.controls.length > 0) {
+            for (const controlId of q.controls) {
+              // Verify control exists
+              const existingControl = await tx.annexAControl.findUnique({
+                where: { id: controlId }
+              });
+              if (!existingControl) {
+                throw new Error(`CONTROL_NOT_FOUND: ${controlId}`);
+              }
+
+              await tx.interviewQAControl.create({
+                data: {
+                  qaId: interviewQA.id,
+                  controlId: controlId
+                }
+              });
+            }
+          }
+        }
+      }
+
+      // Update interview
+      const updatedInterview = await tx.interview.update({
+        where: { id: parseInt(id) },
+        data: {
+          ...(interviewDate && { interviewDate: new Date(interviewDate) }),
+          ...(status && { status })
+        },
+        include: {
+          respondent: true,
+          interviewer: {
+            select: {
+              id: true,
+              fullName: true,
+              email: true
+            }
+          },
+          interviewQA: {
+            include: {
+              question: true,
+              interviewQAControls: {
+                include: {
+                  control: {
+                    select: {
+                      id: true,
+                      title: true,
+                      category: true
+                    }
+                  }
+                }
+              }
+            },
+            orderBy: {
+              questionOrder: 'asc'
+            }
+          }
+        }
+      });
+
+      // Log activity
+      await tx.activity.create({
+        data: {
+          userId: req.user?.id || 1,
+          activityType: 'interview_updated',
+          entityType: 'interviews',
+          entityId: parseInt(id),
+          description: `Updated interview with ${updatedInterview.respondent.name}`
+        }
+      });
+
+      return updatedInterview;
+    });
+
+    console.log('✅ [updateInterview] Interview updated successfully');
+
+    res.json({
+      message: 'Interview updated successfully',
+      interview: result
+    });
+
+  } catch (error) {
+    console.error('Update interview error:', error);
+
+    // Handle specific errors
+    if (error.message?.startsWith('QUESTION_NOT_FOUND')) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: error.message.replace('QUESTION_NOT_FOUND: ', 'Question not found: ')
+      });
+    }
+
+    if (error.message?.startsWith('CONTROL_NOT_FOUND')) {
+      return res.status(400).json({
+        error: 'Validation error',
+        message: error.message.replace('CONTROL_NOT_FOUND: ', 'Control not found: ')
+      });
+    }
+
+    res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to update interview'
+    });
+  }
+};
+
+/**
+ * DELETE /api/interviews/:id
+ * Delete interview
+ */
+export const deleteInterview = async (req, res) => {
+  console.log('🗑️ [deleteInterview] Request received');
+  console.log('🗑️ [deleteInterview] ID:', req.params.id);
+
+  try {
+    const { id } = req.params;
+
+    // Check if interview exists
+    const interview = await prisma.interview.findUnique({
+      where: { id: parseInt(id) },
+      include: {
+        respondent: true
+      }
+    });
+
+    if (!interview) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Interview not found'
+      });
+    }
+
+    // Delete interview (cascade will delete related records)
+    await prisma.interview.delete({
+      where: { id: parseInt(id) }
+    });
+
+    // Log activity
+    await prisma.activity.create({
+      data: {
+        userId: req.user?.id || 1,
+        activityType: 'interview_deleted',
+        entityType: 'interviews',
+        entityId: parseInt(id),
+        description: `Deleted interview with ${interview.respondent.name}`
+      }
+    });
+
+    console.log('✅ [deleteInterview] Interview deleted successfully');
+
+    res.json({
+      message: 'Interview deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Delete interview error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to delete interview'
     });
   }
 };

@@ -25,7 +25,7 @@ export default function QuestionList({ questions, onUpdate, onDelete, onReorder,
     const query = searchControl.toLowerCase();
     return (
       control.id.toLowerCase().includes(query) ||
-      control.controlTitle.toLowerCase().includes(query)
+      control.title.toLowerCase().includes(query)
     );
   });
 
@@ -77,30 +77,51 @@ export default function QuestionList({ questions, onUpdate, onDelete, onReorder,
             {/* Question Content */}
             <div className="flex-1 space-y-3">
               {/* Question Text */}
-              {editingId === index ? (
-                <Textarea
-                  value={question.questionText}
-                  onChange={(e) =>
-                    onUpdate(index, { ...question, questionText: e.target.value })
-                  }
-                  rows={3}
-                  className="w-full"
-                  autoFocus
-                  onBlur={() => setEditingId(null)}
-                />
-              ) : (
-                <p
-                  className="text-sm text-gray-900 cursor-text"
-                  onClick={() => setEditingId(index)}
-                >
-                  {question.questionText}
-                </p>
-              )}
+              <div className="space-y-2">
+                <div>
+                  <label className="text-xs font-medium text-gray-700 block mb-1">Question</label>
+                  {editingId === index ? (
+                    <Textarea
+                      value={question.questionText}
+                      onChange={(e) =>
+                        onUpdate(index, { ...question, questionText: e.target.value })
+                      }
+                      rows={2}
+                      className="w-full"
+                      autoFocus
+                      onBlur={() => setEditingId(null)}
+                    />
+                  ) : (
+                    <p
+                      className="text-sm text-gray-900 cursor-text p-2 hover:bg-gray-50 rounded"
+                      onClick={() => setEditingId(index)}
+                    >
+                      {question.questionText}
+                    </p>
+                  )}
+                </div>
 
-              {/* Question Source */}
-              {question.questionId && (
-                <p className="text-xs text-gray-500">From question bank</p>
-              )}
+                {/* Answer Text (if exists in question object) */}
+                {question.hasOwnProperty('answerText') && (
+                  <div>
+                    <label className="text-xs font-medium text-gray-700 block mb-1">Answer</label>
+                    <Textarea
+                      value={question.answerText || ''}
+                      onChange={(e) =>
+                        onUpdate(index, { ...question, answerText: e.target.value })
+                      }
+                      rows={2}
+                      placeholder="Enter answer (optional)..."
+                      className="w-full"
+                    />
+                  </div>
+                )}
+
+                {/* Question Source */}
+                {question.questionId && (
+                  <p className="text-xs text-gray-500 italic">From question bank</p>
+                )}
+              </div>
 
               {/* Controls */}
               {showControls && (
@@ -229,10 +250,10 @@ export default function QuestionList({ questions, onUpdate, onDelete, onReorder,
                               {control.id}
                             </div>
                             <div className="text-sm text-gray-700">
-                              {control.controlTitle}
+                              {control.title}
                             </div>
                             <Badge variant="outline" size="sm" className="mt-2">
-                              {control.controlCategory}
+                              {control.category}
                             </Badge>
                           </div>
                           {isLinked && (

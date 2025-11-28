@@ -5,6 +5,8 @@ import {
   getInterviews,
   getInterviewById,
   createInterview,
+  updateInterview,
+  deleteInterview,
   getRespondents,
   getQuestionBank
 } from '../controllers/interviewsController.js';
@@ -16,6 +18,8 @@ const router = express.Router();
 router.get('/', authenticateToken, getInterviews);
 router.get('/:id', authenticateToken, getInterviewById);
 router.post('/', authenticateToken, createInterview);
+router.put('/:id', authenticateToken, updateInterview);
+router.delete('/:id', authenticateToken, deleteInterview);
 
 // Respondent routes
 router.get('/respondents/all', authenticateToken, getRespondents);

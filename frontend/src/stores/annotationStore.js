@@ -97,15 +97,23 @@ const useAnnotationStore = create((set, get) => ({
         controlId
       });
 
+      // Map backend fields to frontend fields
+      const mappedAnnotation = {
+        ...response.data.annotation,
+        content: response.data.annotation.highlightedText,
+        position: response.data.annotation.positionData,
+        pageNumber: JSON.parse(response.data.annotation.positionData).pageNumber
+      };
+
       // Update annotation in list
       set((state) => ({
         annotations: state.annotations.map((ann) =>
-          ann.id === annotationId ? response.data.annotation : ann
+          ann.id === annotationId ? mappedAnnotation : ann
         ),
         isLoading: false
       }));
 
-      return { success: true, data: response.data.annotation };
+      return { success: true, data: mappedAnnotation };
     } catch (error) {
       const errorMessage = error.response?.data?.message || 'Failed to add control';
       set({ error: errorMessage, isLoading: false });
@@ -119,15 +127,23 @@ const useAnnotationStore = create((set, get) => ({
     try {
       const response = await apiClient.delete(`/annotations/${annotationId}/controls/${controlId}`);
 
+      // Map backend fields to frontend fields
+      const mappedAnnotation = {
+        ...response.data.annotation,
+        content: response.data.annotation.highlightedText,
+        position: response.data.annotation.positionData,
+        pageNumber: JSON.parse(response.data.annotation.positionData).pageNumber
+      };
+
       // Update annotation in list
       set((state) => ({
         annotations: state.annotations.map((ann) =>
-          ann.id === annotationId ? response.data.annotation : ann
+          ann.id === annotationId ? mappedAnnotation : ann
         ),
         isLoading: false
       }));
 
-      return { success: true, data: response.data.annotation };
+      return { success: true, data: mappedAnnotation };
     } catch (error) {
       const errorMessage = error.response?.data?.message || 'Failed to remove control';
       set({ error: errorMessage, isLoading: false });

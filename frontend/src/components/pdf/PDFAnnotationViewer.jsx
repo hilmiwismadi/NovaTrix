@@ -30,9 +30,15 @@ export default function PDFAnnotationViewer({
   onAnnotationSelect
 }) {
   const [highlightColor, setHighlightColor] = useState(HIGHLIGHT_COLORS[0].value);
+  const highlightColorRef = useRef(highlightColor); // Keep ref in sync with state
   const [message, setMessage] = useState('');
   const pageNavigationPluginInstance = pageNavigationPlugin();
   const { jumpToPage } = pageNavigationPluginInstance;
+
+  // Update ref whenever color changes
+  useEffect(() => {
+    highlightColorRef.current = highlightColor;
+  }, [highlightColor]);
 
   // Debug: Log once
   useEffect(() => {
@@ -240,7 +246,7 @@ export default function PDFAnnotationViewer({
       const newAnnotation = {
         content: selectedText,
         position: JSON.stringify(position),
-        color: highlightColor,
+        color: highlightColorRef.current, // Use ref to get current color
         pageNumber: pageIndex + 1
       };
 
@@ -260,7 +266,7 @@ export default function PDFAnnotationViewer({
     return () => {
       viewerContainer.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [highlightColor, onAnnotationCreate]);
+  }, [onAnnotationCreate]); // highlightColor removed - using ref instead
 
   return (
     <div className="h-full relative">
