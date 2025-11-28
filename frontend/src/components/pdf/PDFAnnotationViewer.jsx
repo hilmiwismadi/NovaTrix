@@ -34,9 +34,10 @@ export default function PDFAnnotationViewer({
   const pageNavigationPluginInstance = pageNavigationPlugin();
   const { jumpToPage } = pageNavigationPluginInstance;
 
-  // Debug: Log the PDF URL
-  console.log('PDFAnnotationViewer - pdfUrl:', pdfUrl);
-  console.log('PDFAnnotationViewer - annotations count:', annotations.length);
+  // Debug: Log once
+  useEffect(() => {
+    console.log('📄 PDF loaded with', annotations.length, 'annotations');
+  }, [annotations.length]);
 
   // Scroll to selected annotation
   useEffect(() => {
@@ -76,20 +77,33 @@ export default function PDFAnnotationViewer({
         ? JSON.parse(annotation.position)
         : annotation.position;
 
+      // Check if position is valid
+      if (!position) {
+        console.warn('⚠️ Annotation has no position data:', annotation);
+        return null;
+      }
+
+      if (!position.rects || !Array.isArray(position.rects)) {
+        console.warn('⚠️ Position has no rects array:', position);
+        return null;
+      }
+
+      const highlightAreas = position.rects.map(rect => ({
+        pageIndex: rect.pageNumber - 1, // Use rect's pageNumber, not position's
+        left: rect.x1,
+        top: rect.y1,
+        width: rect.x2 - rect.x1,
+        height: rect.y2 - rect.y1,
+      }));
+
       return {
         id: String(annotation.id),
         content: annotation.content,
-        highlightAreas: position.rects ? position.rects.map(rect => ({
-          pageIndex: position.pageNumber - 1, // Convert to 0-based index
-          left: rect.x1,
-          top: rect.y1,
-          width: rect.x2 - rect.x1,
-          height: rect.y2 - rect.y1,
-        })) : [],
+        highlightAreas,
         color: annotation.color || '#FFFF00'
       };
     } catch (error) {
-      console.error('Error parsing annotation:', error);
+      console.error('❌ Error parsing annotation:', error, annotation);
       return null;
     }
   }).filter(Boolean);
@@ -99,8 +113,6 @@ export default function PDFAnnotationViewer({
     const highlightsOnPage = highlights.filter((highlight) =>
       highlight.highlightAreas.some((area) => area.pageIndex === props.pageIndex)
     );
-
-    console.log(`Rendering ${highlightsOnPage.length} highlights on page ${props.pageIndex}`);
 
     return (
       <div>
@@ -172,12 +184,26 @@ export default function PDFAnnotationViewer({
 
       // Find which page the selection is on
       const textLayer = range.startContainer.parentElement?.closest('.rpv-core__text-layer');
-      if (!textLayer) return;
+      if (!textLayer) {
+        console.warn('⚠️ Text layer not found');
+        return;
+      }
 
       const pageElement = textLayer.closest('.rpv-core__page-layer');
-      if (!pageElement) return;
+      if (!pageElement) {
+        console.warn('⚠️ Page element not found');
+        return;
+      }
 
-      const pageIndex = parseInt(pageElement.getAttribute('data-page-number') || '1') - 1;
+      // @react-pdf-viewer uses data-testid="core__page-layer-{pageIndex}"
+      const testId = pageElement.getAttribute('data-testid');
+      console.log('🔢 data-testid:', testId);
+
+      // Extract page index from data-testid (format: "core__page-layer-0", "core__page-layer-1", etc.)
+      const pageIndexMatch = testId?.match(/core__page-layer-(\d+)/);
+      const pageIndex = pageIndexMatch ? parseInt(pageIndexMatch[1]) : 0;
+
+      console.log('✨ Creating annotation on page:', pageIndex + 1, '(pageIndex:', pageIndex, ')');
 
       // Get page dimensions for relative positioning
       const pageRect = pageElement.getBoundingClientRect();
