@@ -130,7 +130,7 @@ export default function DocumentDashboard() {
                   <Badge variant={doc.status}>{doc.status.toUpperCase()}</Badge>
                   <button
                     onClick={(e) => handleDeleteClick(e, doc)}
-                    className="p-1.5 rounded-md text-red-600 hover:bg-red-50 transition-colors"
+                    className="p-1.5 rounded-md text-red-600 hover:bg-red-50 hover:scale-110 active:scale-95 transition-all duration-200"
                     title="Delete document"
                   >
                     <Trash2 size={18} />

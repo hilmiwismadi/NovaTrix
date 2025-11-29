@@ -687,3 +687,59 @@ export const getQuestionBank = async (req, res) => {
     });
   }
 };
+
+/**
+ * GET /api/interviews/stats
+ * Get interview statistics for dashboard
+ */
+export const getInterviewStats = async (req, res) => {
+  try {
+    // Calculate date 7 days ago for "this week" trend
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+    // Get total count
+    const total = await prisma.interview.count();
+
+    // Get count for this week
+    const thisWeek = await prisma.interview.count({
+      where: {
+        createdAt: {
+          gte: oneWeekAgo
+        }
+      }
+    });
+
+    // Get counts by status
+    const statusCounts = await prisma.interview.groupBy({
+      by: ['status'],
+      _count: {
+        status: true
+      }
+    });
+
+    // Format status counts
+    const byStatus = {
+      scheduled: 0,
+      completed: 0
+    };
+
+    statusCounts.forEach(item => {
+      if (item.status === 'scheduled') byStatus.scheduled = item._count.status;
+      if (item.status === 'completed') byStatus.completed = item._count.status;
+    });
+
+    res.json({
+      total,
+      thisWeek,
+      byStatus
+    });
+
+  } catch (error) {
+    console.error('Get interview stats error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to fetch interview statistics'
+    });
+  }
+};

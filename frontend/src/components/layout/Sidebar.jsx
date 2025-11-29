@@ -59,8 +59,8 @@ export default function Sidebar() {
             className={({ isActive }) =>
               `flex items-start gap-4 p-3 rounded-lg transition-all duration-200 border ${
                 isActive
-                  ? 'bg-cyan/8 border-cyan/35 text-gray-900 shadow-soft'
-                  : 'border-transparent text-gray-600 hover:bg-gray-100/50 hover:text-gray-900'
+                  ? 'bg-cyan-600/8 border-cyan-600/35 text-gray-900 shadow-soft'
+                  : 'border-transparent text-gray-600 hover:bg-gray-100/50 hover:text-gray-900 hover:scale-[1.02] active:scale-[0.98]'
               }`
             }
           >
@@ -69,7 +69,7 @@ export default function Sidebar() {
                 <item.icon
                   size={20}
                   className={`flex-shrink-0 mt-0.5 transition-colors ${
-                    isActive ? 'text-cyan' : 'text-gray-500'
+                    isActive ? 'text-cyan-600' : 'text-gray-500'
                   }`}
                   strokeWidth={isActive ? 2 : 1.5}
                 />

@@ -34,10 +34,10 @@ export default function ControlNavigator() {
           <button
             key={cat}
             onClick={() => setSelectedCategory(cat)}
-            className={`px-4 py-2 rounded-lg font-medium transition-all border ${
+            className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 border ${
               selectedCategory === cat
-                ? 'bg-cyan text-white border-cyan'
-                : 'bg-white text-gray-700 border-gray-300 hover:border-cyan hover:text-cyan'
+                ? 'bg-cyan-600 text-white border-cyan-600 shadow-soft'
+                : 'bg-white text-gray-700 border-gray-300 hover:border-cyan-600 hover:text-cyan-600 hover:scale-105 active:scale-95 hover:shadow-soft'
             }`}
           >
             {cat === 'ALL' ? 'All Controls' : CATEGORIES[cat]}

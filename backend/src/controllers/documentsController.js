@@ -358,3 +358,61 @@ export const servePDF = async (req, res) => {
     });
   }
 };
+
+/**
+ * GET /api/documents/stats
+ * Get document statistics for dashboard
+ */
+export const getDocumentStats = async (req, res) => {
+  try {
+    // Calculate date 7 days ago for "this week" trend
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+    // Get total count
+    const total = await prisma.document.count();
+
+    // Get count for this week
+    const thisWeek = await prisma.document.count({
+      where: {
+        uploadDate: {
+          gte: oneWeekAgo
+        }
+      }
+    });
+
+    // Get counts by status
+    const statusCounts = await prisma.document.groupBy({
+      by: ['status'],
+      _count: {
+        status: true
+      }
+    });
+
+    // Format status counts
+    const byStatus = {
+      raw: 0,
+      analyzed: 0,
+      verified: 0
+    };
+
+    statusCounts.forEach(item => {
+      if (item.status === 'raw') byStatus.raw = item._count.status;
+      if (item.status === 'analyzed') byStatus.analyzed = item._count.status;
+      if (item.status === 'verified') byStatus.verified = item._count.status;
+    });
+
+    res.json({
+      total,
+      thisWeek,
+      byStatus
+    });
+
+  } catch (error) {
+    console.error('Get document stats error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to fetch document statistics'
+    });
+  }
+};

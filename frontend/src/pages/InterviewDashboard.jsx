@@ -108,7 +108,7 @@ export default function InterviewDashboard() {
       {/* Loading State */}
       {isLoading && interviews.length === 0 && (
         <div className="text-center py-12">
-          <div className="inline-block w-8 h-8 border-4 border-cyan border-t-transparent rounded-full animate-spin"></div>
+          <div className="inline-block w-8 h-8 border-4 border-cyan-600 border-t-transparent rounded-full animate-spin"></div>
           <p className="text-gray-500 mt-4">Loading interviews...</p>
         </div>
       )}
@@ -140,11 +140,11 @@ export default function InterviewDashboard() {
               key={interview.id}
               hoverable
               onClick={() => handleInterviewSelect(interview)}
-              className={selectedInterview?.id === interview.id ? 'ring-2 ring-cyan/60 border-cyan/30' : ''}
+              className={selectedInterview?.id === interview.id ? 'ring-2 ring-cyan-600/60 border-cyan-600/30' : ''}
             >
               <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-10 h-10 bg-cyan/10 rounded-full flex items-center justify-center border border-cyan/30">
-                  <User size={20} className="text-cyan" strokeWidth={2} />
+                <div className="flex-shrink-0 w-10 h-10 bg-cyan-600/10 rounded-full flex items-center justify-center border border-cyan-600/30">
+                  <User size={20} className="text-cyan-600" strokeWidth={2} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h3 className="font-semibold text-gray-900 truncate">{interview.respondent.name}</h3>

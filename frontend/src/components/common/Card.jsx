@@ -5,11 +5,15 @@ export default function Card({
   hoverable = false,
   variant = 'flat'
 }) {
-  const hoverClasses = hoverable ? 'hover:shadow-soft-lg hover:border-cyan/20 transition-all duration-200 cursor-pointer' : '';
+  // Auto-enable hover effects if onClick is provided
+  const isInteractive = hoverable || onClick;
+  const hoverClasses = isInteractive
+    ? 'hover:shadow-soft-lg hover:border-cyan-600/30 hover:scale-[1.01] active:scale-[0.99] transition-all duration-200 cursor-pointer'
+    : '';
 
   const variants = {
     flat: 'bg-white border border-gray-200 shadow-soft',
-    glass: 'bg-white/75 backdrop-blur-glass border border-cyan/10 shadow-glass',
+    glass: 'bg-white/75 backdrop-blur-glass border border-cyan-600/10 shadow-glass',
     'glass-strong': 'bg-white/85 backdrop-blur-glass border border-gray-300/50 shadow-glass',
   };
 

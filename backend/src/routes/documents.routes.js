@@ -7,12 +7,20 @@ import {
   uploadDocument,
   updateDocument,
   deleteDocument,
-  servePDF
+  servePDF,
+  getDocumentStats
 } from '../controllers/documentsController.js';
 import { authenticateToken } from '../middleware/auth.js';
 import upload from '../middleware/upload.js';
 
 const router = express.Router();
+
+/**
+ * @route   GET /api/documents/stats
+ * @desc    Get document statistics for dashboard
+ * @access  Private
+ */
+router.get('/stats', authenticateToken, getDocumentStats);
 
 /**
  * @route   GET /api/documents

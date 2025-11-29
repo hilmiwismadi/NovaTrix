@@ -17,15 +17,15 @@ const getIcon = (type) => {
 const getIconColor = (action) => {
   // Moderate cyan approach - use cyan with varying opacity for brand consistency
   const colors = {
-    uploaded: 'text-cyan',
-    analyzed: 'text-cyan',
-    added: 'text-cyan/80',
-    completed: 'text-cyan/70',
-    verified: 'text-cyan',
-    generated: 'text-cyan/80',
-    updated: 'text-cyan/70'
+    uploaded: 'text-cyan-600',
+    analyzed: 'text-cyan-600',
+    added: 'text-cyan-600/80',
+    completed: 'text-cyan-600/70',
+    verified: 'text-cyan-600',
+    generated: 'text-cyan-600/80',
+    updated: 'text-cyan-600/70'
   };
-  return colors[action] || 'text-cyan/60';
+  return colors[action] || 'text-cyan-600/60';
 };
 
 const formatTime = (timestamp) => {

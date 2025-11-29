@@ -7,12 +7,12 @@ export default function Button({
   size = 'md',
   type = 'button'
 }) {
-  const baseClasses = 'font-medium transition-all duration-200 rounded-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border';
+  const baseClasses = 'font-medium transition-all duration-200 rounded-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed border active:scale-95 hover:scale-[1.02]';
 
   const variants = {
-    primary: 'bg-[#06b6d4] text-white border-[#06b6d4] hover:bg-[#0891b2] shadow-soft hover:shadow-soft-lg',
-    secondary: 'bg-white text-gray-600 border-gray-300 hover:border-cyan hover:text-cyan shadow-neumorphic hover:shadow-soft-lg',
-    outline: 'bg-transparent text-cyan border-cyan hover:bg-cyan/10 hover:border-cyan-dark',
+    primary: 'bg-cyan-600 text-white border-cyan-600 hover:bg-cyan-700 hover:border-cyan-700 shadow-soft hover:shadow-soft-lg',
+    secondary: 'bg-white text-gray-600 border-gray-300 hover:border-cyan-600 hover:text-cyan-600 shadow-neumorphic hover:shadow-soft-lg',
+    outline: 'bg-transparent text-cyan-600 border-cyan-600 hover:bg-cyan-600/10 hover:border-cyan-700',
   };
 
   const sizes = {

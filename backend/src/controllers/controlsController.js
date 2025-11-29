@@ -79,3 +79,48 @@ export const getControlById = async (req, res) => {
     });
   }
 };
+
+/**
+ * GET /api/controls/stats
+ * Get control statistics for dashboard
+ */
+export const getControlStats = async (req, res) => {
+  try {
+    // Fetch all controls
+    const controls = await prisma.annexAControl.findMany({
+      select: {
+        status: true,
+        rating: true
+      }
+    });
+
+    const total = controls.length;
+
+    // Count by status
+    const compliant = controls.filter(c => c.status === 'compliant').length;
+    const partial = controls.filter(c => c.status === 'partial').length;
+    const nonCompliant = controls.filter(c => c.status === 'non-compliant').length;
+    const pending = controls.filter(c => c.status === 'pending').length;
+
+    // Calculate average compliance score
+    const averageScore = controls.length > 0
+      ? Math.round(controls.reduce((sum, c) => sum + c.rating, 0) / controls.length)
+      : 0;
+
+    res.json({
+      total,
+      compliant,
+      partial,
+      nonCompliant,
+      pending,
+      averageScore
+    });
+
+  } catch (error) {
+    console.error('Get control stats error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to fetch control statistics'
+    });
+  }
+};

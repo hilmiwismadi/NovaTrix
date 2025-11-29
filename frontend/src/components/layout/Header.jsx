@@ -17,7 +17,7 @@ export default function Header() {
         <div className="flex items-center gap-6">
           <div className="flex items-center text-[28px] font-semibold tracking-tight leading-none">
             <span className="text-gray-900">Nova</span>
-            <span className="text-cyan">Trix</span>
+            <span className="text-cyan-600">Trix</span>
           </div>
           <div className="h-6 w-px bg-gray-300/50" />
           <div className="text-sm text-gray-500 font-normal">
@@ -37,7 +37,7 @@ export default function Header() {
 
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 hover:text-red-600 hover:bg-red-50 rounded-lg border border-gray-200 hover:border-red-200 transition-all"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 hover:text-red-600 hover:bg-red-50 rounded-lg border border-gray-200 hover:border-red-200 hover:scale-105 active:scale-95 transition-all duration-200"
             title="Logout"
           >
             <LogOut size={18} />

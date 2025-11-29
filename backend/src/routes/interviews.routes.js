@@ -8,13 +8,15 @@ import {
   updateInterview,
   deleteInterview,
   getRespondents,
-  getQuestionBank
+  getQuestionBank,
+  getInterviewStats
 } from '../controllers/interviewsController.js';
 import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
 
 // Interview routes
+router.get('/stats', authenticateToken, getInterviewStats);
 router.get('/', authenticateToken, getInterviews);
 router.get('/:id', authenticateToken, getInterviewById);
 router.post('/', authenticateToken, createInterview);

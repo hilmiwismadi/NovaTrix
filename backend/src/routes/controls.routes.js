@@ -3,11 +3,19 @@
 import express from 'express';
 import {
   getControls,
-  getControlById
+  getControlById,
+  getControlStats
 } from '../controllers/controlsController.js';
 import { authenticateToken } from '../middleware/auth.js';
 
 const router = express.Router();
+
+/**
+ * @route   GET /api/controls/stats
+ * @desc    Get control statistics for dashboard
+ * @access  Private
+ */
+router.get('/stats', authenticateToken, getControlStats);
 
 /**
  * @route   GET /api/controls
