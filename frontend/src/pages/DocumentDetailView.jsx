@@ -16,7 +16,7 @@ export default function DocumentDetailView() {
   const { slug } = useParams();
   const navigate = useNavigate();
   const [selectedAnnotation, setSelectedAnnotation] = useState(null);
-  const [isHeaderExpanded, setIsHeaderExpanded] = useState(true);
+  const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
   const [isEditingSummary, setIsEditingSummary] = useState(false);
   const [summaryText, setSummaryText] = useState('');
   const [isEditingTitle, setIsEditingTitle] = useState(false);

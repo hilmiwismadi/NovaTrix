@@ -6,7 +6,7 @@ import { Viewer, Worker, SpecialZoomLevel } from '@react-pdf-viewer/core';
 import { highlightPlugin } from '@react-pdf-viewer/highlight';
 import { zoomPlugin } from '@react-pdf-viewer/zoom';
 import { pageNavigationPlugin } from '@react-pdf-viewer/page-navigation';
-import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2, Copy, FileEdit } from 'lucide-react';
 
 // Import styles
 import '@react-pdf-viewer/core/lib/styles/index.css';
@@ -32,6 +32,7 @@ export default function PDFAnnotationViewer({
   const [highlightColor, setHighlightColor] = useState(HIGHLIGHT_COLORS[0].value);
   const highlightColorRef = useRef(highlightColor); // Keep ref in sync with state
   const [message, setMessage] = useState('');
+  const [selectionPopup, setSelectionPopup] = useState(null); // { text, position, annotationData, x, y }
   const pageNavigationPluginInstance = pageNavigationPlugin();
   const { jumpToPage } = pageNavigationPluginInstance;
 
@@ -203,13 +204,10 @@ export default function PDFAnnotationViewer({
 
       // @react-pdf-viewer uses data-testid="core__page-layer-{pageIndex}"
       const testId = pageElement.getAttribute('data-testid');
-      console.log('🔢 data-testid:', testId);
 
       // Extract page index from data-testid (format: "core__page-layer-0", "core__page-layer-1", etc.)
       const pageIndexMatch = testId?.match(/core__page-layer-(\d+)/);
       const pageIndex = pageIndexMatch ? parseInt(pageIndexMatch[1]) : 0;
-
-      console.log('✨ Creating annotation on page:', pageIndex + 1, '(pageIndex:', pageIndex, ')');
 
       // Get page dimensions for relative positioning
       const pageRect = pageElement.getBoundingClientRect();
@@ -246,19 +244,17 @@ export default function PDFAnnotationViewer({
       const newAnnotation = {
         content: selectedText,
         position: JSON.stringify(position),
-        color: highlightColorRef.current, // Use ref to get current color
+        color: highlightColorRef.current,
         pageNumber: pageIndex + 1
       };
 
-      console.log('Creating annotation:', newAnnotation);
-      onAnnotationCreate(newAnnotation);
-
-      // Clear selection
-      selection.removeAllRanges();
-
-      // Show feedback message
-      setMessage('Annotation created!');
-      setTimeout(() => setMessage(''), 2000);
+      // Show popup with options instead of immediately creating annotation
+      setSelectionPopup({
+        text: selectedText,
+        annotationData: newAnnotation,
+        x: rect.left + rect.width / 2,
+        y: rect.top - 10
+      });
     };
 
     viewerContainer.addEventListener('mouseup', handleMouseUp);
@@ -268,8 +264,73 @@ export default function PDFAnnotationViewer({
     };
   }, [onAnnotationCreate]); // highlightColor removed - using ref instead
 
+  // Handle copy text
+  const handleCopyText = () => {
+    if (selectionPopup?.text) {
+      navigator.clipboard.writeText(selectionPopup.text);
+      setMessage('Text copied!');
+      setTimeout(() => setMessage(''), 2000);
+    }
+    setSelectionPopup(null);
+    window.getSelection()?.removeAllRanges();
+  };
+
+  // Handle create annotation
+  const handleCreateAnnotation = () => {
+    if (selectionPopup?.annotationData) {
+      onAnnotationCreate(selectionPopup.annotationData);
+      setMessage('Annotation created!');
+      setTimeout(() => setMessage(''), 2000);
+    }
+    setSelectionPopup(null);
+    window.getSelection()?.removeAllRanges();
+  };
+
+  // Close popup when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => {
+      if (selectionPopup) {
+        setSelectionPopup(null);
+        window.getSelection()?.removeAllRanges();
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [selectionPopup]);
+
   return (
     <div className="h-full relative">
+      {/* Text Selection Popup */}
+      {selectionPopup && (
+        <div
+          className="fixed z-50 bg-white rounded-lg shadow-2xl border border-gray-300 flex gap-1 p-1"
+          style={{
+            left: `${selectionPopup.x}px`,
+            top: `${selectionPopup.y}px`,
+            transform: 'translate(-50%, -100%)'
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={handleCopyText}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded transition-colors"
+            title="Copy text"
+          >
+            <Copy size={16} />
+            Copy
+          </button>
+          <button
+            onClick={handleCreateAnnotation}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-700 rounded transition-colors"
+            title="Create annotation"
+          >
+            <FileEdit size={16} />
+            Annotate
+          </button>
+        </div>
+      )}
+
       {/* Zoom Controls */}
       <div className="absolute top-4 left-4 z-10 bg-white rounded-lg shadow-lg p-2 border border-gray-200">
         <div className="flex flex-col gap-1">

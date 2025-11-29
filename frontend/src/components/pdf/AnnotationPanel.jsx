@@ -2,7 +2,7 @@
 // Sidebar panel for managing annotations and tagging with controls
 
 import { useState } from 'react';
-import { X, Tag, Trash2, Plus, Check, Info } from 'lucide-react';
+import { X, Tag, Trash2, Plus, Check, Info, Copy } from 'lucide-react';
 import Button from '../common/Button';
 import Badge from '../common/Badge';
 
@@ -19,6 +19,13 @@ export default function AnnotationPanel({
   const [showControlPicker, setShowControlPicker] = useState(false);
   const [searchControl, setSearchControl] = useState('');
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [copiedId, setCopiedId] = useState(null);
+
+  const handleCopyText = (text, annotationId) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(annotationId);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
 
   // Filter controls for picker
   const filteredControls = controls.filter(control =>
@@ -82,18 +89,34 @@ export default function AnnotationPanel({
                       className="w-4 h-4 rounded flex-shrink-0 mt-1"
                       style={{ backgroundColor: annotation.color || '#FFFF00' }}
                     />
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (confirm('Delete this annotation?')) {
-                          onAnnotationDelete(annotation.id);
-                        }
-                      }}
-                      className="text-gray-400 hover:text-red-600 transition-colors"
-                      title="Delete annotation"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopyText(annotation.content, annotation.id);
+                        }}
+                        className={`transition-colors ${
+                          copiedId === annotation.id
+                            ? 'text-green-600'
+                            : 'text-gray-400 hover:text-cyan-600'
+                        }`}
+                        title={copiedId === annotation.id ? 'Copied!' : 'Copy text'}
+                      >
+                        {copiedId === annotation.id ? <Check size={16} /> : <Copy size={16} />}
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (confirm('Delete this annotation?')) {
+                            onAnnotationDelete(annotation.id);
+                          }
+                        }}
+                        className="text-gray-400 hover:text-red-600 transition-colors"
+                        title="Delete annotation"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </div>
                   <p className="text-sm text-gray-700 line-clamp-3">
                     {annotation.content}
@@ -266,13 +289,13 @@ export default function AnnotationPanel({
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-black bg-opacity-30 z-40"
+            className="fixed inset-0 bg-black bg-opacity-50 z-40"
             onClick={() => setShowDetailsModal(false)}
           />
 
           {/* Modal */}
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-            <div className="bg-white rounded-lg shadow-2xl w-full max-w-md flex flex-col pointer-events-auto">
+            <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl flex flex-col pointer-events-auto">
               {/* Header */}
               <div className="p-4 border-b border-gray-200 flex items-center justify-between">
                 <h3 className="text-lg font-bold text-gray-900">Annotation Details</h3>
@@ -312,10 +335,46 @@ export default function AnnotationPanel({
 
                 {/* Highlighted Text */}
                 <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase">Highlighted Text</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-gray-500 uppercase">Highlighted Text</label>
+                    <button
+                      onClick={() => handleCopyText(selectedAnnotation.content, selectedAnnotation.id)}
+                      className={`flex items-center gap-1 text-xs transition-colors ${
+                        copiedId === selectedAnnotation.id
+                          ? 'text-green-600'
+                          : 'text-cyan-600 hover:text-cyan-700'
+                      }`}
+                    >
+                      {copiedId === selectedAnnotation.id ? (
+                        <>
+                          <Check size={14} />
+                          Copied!
+                        </>
+                      ) : (
+                        <>
+                          <Copy size={14} />
+                          Copy
+                        </>
+                      )}
+                    </button>
+                  </div>
                   <p className="text-sm text-gray-900 mt-1 p-3 bg-gray-50 rounded border border-gray-200 max-h-32 overflow-y-auto">
                     {selectedAnnotation.content}
                   </p>
+                </div>
+
+                {/* AI Summary */}
+                <div>
+                  <label className="text-xs font-semibold text-gray-500 uppercase">AI Summary</label>
+                  <div className="mt-1 p-3 bg-gradient-to-r from-cyan-50 to-blue-50 rounded border border-cyan-200">
+                    {selectedAnnotation.summary ? (
+                      <p className="text-sm text-gray-900">{selectedAnnotation.summary}</p>
+                    ) : (
+                      <p className="text-sm text-gray-500 italic">
+                        AI-generated summary will appear here
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {/* Tagged Controls */}

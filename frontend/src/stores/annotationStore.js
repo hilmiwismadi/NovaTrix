@@ -33,13 +33,21 @@ const useAnnotationStore = create((set, get) => ({
     try {
       const response = await apiClient.post('/annotations', annotationData);
 
+      // Map backend fields to frontend fields
+      const mappedAnnotation = {
+        ...response.data.annotation,
+        content: response.data.annotation.highlightedText,
+        position: response.data.annotation.positionData,
+        pageNumber: JSON.parse(response.data.annotation.positionData).pageNumber
+      };
+
       // Add to annotations list
       set((state) => ({
-        annotations: [response.data.annotation, ...state.annotations],
+        annotations: [mappedAnnotation, ...state.annotations],
         isLoading: false
       }));
 
-      return { success: true, data: response.data.annotation };
+      return { success: true, data: mappedAnnotation };
     } catch (error) {
       const errorMessage = error.response?.data?.message || 'Failed to create annotation';
       set({ error: errorMessage, isLoading: false });

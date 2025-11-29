@@ -1,17 +1,22 @@
 // Seed script for NovaTrix database
-// Populates initial data from frontend mock files
+// Populates initial data including Phase 0 preparation data
 
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
+import { annexAControls2022 } from './data/annexAControls2022.js';
+import { evidenceItems } from './data/evidenceItems.js';
 
 // Load environment variables
 dotenv.config();
 
 const prisma = new PrismaClient();
 
-// Annex A Controls Data (from frontend/src/data/mockAnnexA.js)
-const annexAControls = [
+// Use the complete ISO 27001:2022 control set (93 controls)
+const annexAControls = annexAControls2022;
+
+// Legacy controls for backward compatibility (if needed)
+const legacyAnnexAControls = [
   // A.5 - ORGANIZATIONAL CONTROLS
   {
     id: 'A.5.1',
@@ -518,6 +523,24 @@ async function main() {
     console.log(`✓ Created question: ${question.questionText.substring(0, 50)}...`);
   }
 
+  // CREATE ANNEX A CONTROLS FIRST (needed for interview references)
+  console.log('\nCreating Annex A controls...');
+  for (const control of annexAControls) {
+    const { suggestedActions, ...controlData} = control;
+
+    await prisma.annexAControl.upsert({
+      where: { id: control.id },
+      update: controlData,
+      create: {
+        ...controlData,
+        suggestedActions: suggestedActions ? {
+          create: suggestedActions
+        } : undefined
+      }
+    });
+    console.log(`✓ Created control: ${control.id} - ${control.title}`);
+  }
+
   // Create sample interviews
   console.log('\nCreating sample interviews...');
 
@@ -638,21 +661,18 @@ async function main() {
     });
   }
 
-  console.log('\nCreating Annex A controls...');
-  for (const control of annexAControls) {
-    const { suggestedActions, ...controlData } = control;
-
-    await prisma.annexAControl.upsert({
-      where: { id: control.id },
-      update: controlData,
-      create: {
-        ...controlData,
-        suggestedActions: {
-          create: suggestedActions
-        }
+  console.log('\nCreating Phase 0 evidence items checklist...');
+  for (const item of evidenceItems) {
+    await prisma.evidenceItem.create({
+      data: {
+        category: item.category,
+        itemName: item.itemName,
+        description: item.description,
+        required: item.required,
+        status: 'missing'
       }
     });
-    console.log(`✓ Created control: ${control.id} - ${control.title}`);
+    console.log(`✓ Created evidence item: ${item.itemName}`);
   }
 
   console.log(`\n✅ Seed completed successfully!`);
@@ -661,6 +681,7 @@ async function main() {
   console.log(`   - 5 sample questions created`);
   console.log(`   - 2 sample interviews created`);
   console.log(`   - ${annexAControls.length} Annex A controls created`);
+  console.log(`   - ${evidenceItems.length} evidence items created`);
   console.log(`\nDefault credentials:`);
   console.log(`   Email: admin@novatrix.local`);
   console.log(`   Password: admin123`);
