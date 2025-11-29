@@ -10,6 +10,7 @@ import annotationsRoutes from './routes/annotations.routes.js';
 import controlsRoutes from './routes/controls.routes.js';
 import interviewsRoutes from './routes/interviews.routes.js';
 import activitiesRoutes from './routes/activities.routes.js';
+import soaRoutes from './routes/soa.routes.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
 // Load environment variables
@@ -62,6 +63,7 @@ app.use('/api/annotations', annotationsRoutes);
 app.use('/api/controls', controlsRoutes);
 app.use('/api/interviews', interviewsRoutes);
 app.use('/api/activities', activitiesRoutes);
+app.use('/api/soa', soaRoutes);
 
 // 404 handler
 app.use(notFoundHandler);

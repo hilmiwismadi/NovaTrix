@@ -250,7 +250,8 @@ model SOAEntry {
   controlId            String    @unique @map("control_id")
   applicability        String // applicable, not-applicable, not-determined
   justification        String?
-  implementationStatus String?   @map("implementation_status") // not-started, planned, implemented, verified
+  implementationStatus String?   @map("implementation_status") // implemented, partially-implemented, not-implemented, planned
+  implementationMethod String?   @map("implementation_method") // Manual description of implementation
   responsibleParty     String?   @map("responsible_party")
   targetDate           DateTime? @map("target_date")
   createdAt            DateTime  @default(now()) @map("created_at")

@@ -57,6 +57,26 @@ export default function PDFAnnotationViewer({
         // Jump to the page containing the annotation
         if (position.pageNumber) {
           jumpToPage(position.pageNumber - 1); // Convert to 0-based index
+
+          // After jumping to page, scroll to the specific position
+          setTimeout(() => {
+            const pageElement = document.querySelector(`[data-page-number="${position.pageNumber}"]`);
+            if (pageElement && position.boundingRect) {
+              // Calculate scroll position based on the annotation's position on the page
+              const pageRect = pageElement.getBoundingClientRect();
+              const annotationTop = position.boundingRect.y1 * pageRect.height;
+              const scrollOffset = pageElement.offsetTop + annotationTop - 100; // 100px offset from top
+
+              // Find the scroll container
+              const scrollContainer = pageElement.closest('.rpv-core__inner-pages');
+              if (scrollContainer) {
+                scrollContainer.scrollTo({
+                  top: scrollOffset,
+                  behavior: 'smooth'
+                });
+              }
+            }
+          }, 300); // Wait for page to render
         }
       } catch (error) {
         console.error('Error scrolling to annotation:', error);

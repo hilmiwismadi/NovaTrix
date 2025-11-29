@@ -2,7 +2,7 @@
 // PDF viewer with annotation panel (Feature 3)
 
 import { useEffect, useState, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, FileText, ChevronDown, ChevronUp, Edit2, Save, X } from 'lucide-react';
 import Button from '../components/common/Button';
 import Badge from '../components/common/Badge';
@@ -15,6 +15,7 @@ import useControlsStore from '../stores/controlsStore';
 export default function DocumentDetailView() {
   const { slug } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [selectedAnnotation, setSelectedAnnotation] = useState(null);
   const [isHeaderExpanded, setIsHeaderExpanded] = useState(false);
   const [isEditingSummary, setIsEditingSummary] = useState(false);
@@ -61,6 +62,17 @@ export default function DocumentDetailView() {
       setTitleText(currentDocument.title || '');
     }
   }, [currentDocument]);
+
+  // Auto-select annotation from URL parameter
+  useEffect(() => {
+    const annotationId = searchParams.get('annotationId');
+    if (annotationId && annotations.length > 0) {
+      const annotation = annotations.find(a => a.id === parseInt(annotationId));
+      if (annotation) {
+        setSelectedAnnotation(annotation);
+      }
+    }
+  }, [searchParams, annotations]);
 
   // Handle annotation creation
   const handleAnnotationCreate = async (annotationData) => {

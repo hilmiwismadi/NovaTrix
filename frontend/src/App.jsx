@@ -6,6 +6,7 @@ import DocumentDashboard from './pages/DocumentDashboard';
 import DocumentDetailView from './pages/DocumentDetailView';
 import InterviewDashboard from './pages/InterviewDashboard';
 import ControlNavigator from './pages/ControlNavigator';
+import SOATable from './pages/SOATable';
 import SOAGenerator from './pages/SOAGenerator';
 import GapAnalysis from './pages/GapAnalysis';
 import PrivateRoute from './components/common/PrivateRoute';
@@ -31,6 +32,7 @@ function App() {
           <Route path="documents/:slug" element={<DocumentDetailView />} />
           <Route path="interviews" element={<InterviewDashboard />} />
           <Route path="controls" element={<ControlNavigator />} />
+          <Route path="controls-new" element={<SOATable />} />
           <Route path="soa" element={<SOAGenerator />} />
           <Route path="gaps" element={<GapAnalysis />} />
         </Route>
