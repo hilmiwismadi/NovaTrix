@@ -2,7 +2,7 @@
 // Sidebar panel for managing annotations and tagging with controls
 
 import { useState } from 'react';
-import { X, Tag, Trash2, Plus, Check, Info, Copy } from 'lucide-react';
+import { X, Tag, Trash2, Plus, Check, Info, Copy, Filter } from 'lucide-react';
 import Button from '../common/Button';
 import Badge from '../common/Badge';
 
@@ -20,12 +20,25 @@ export default function AnnotationPanel({
   const [searchControl, setSearchControl] = useState('');
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
+  const [filterByControl, setFilterByControl] = useState('ALL');
 
   const handleCopyText = (text, annotationId) => {
     navigator.clipboard.writeText(text);
     setCopiedId(annotationId);
     setTimeout(() => setCopiedId(null), 2000);
   };
+
+  // Filter annotations by selected control
+  const filteredAnnotations = filterByControl === 'ALL'
+    ? annotations
+    : annotations.filter(annotation =>
+        annotation.annotationControls?.some(ac => ac.control.id === filterByControl)
+      );
+
+  // Get unique controls that are used in annotations
+  const usedControls = [...new Set(
+    annotations.flatMap(a => a.annotationControls?.map(ac => ac.control.id) || [])
+  )].sort();
 
   // Filter controls for picker
   const filteredControls = controls.filter(control =>
@@ -47,18 +60,46 @@ export default function AnnotationPanel({
   return (
     <div className="h-full flex flex-col bg-white border-l border-gray-200">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 flex justify-between items-center">
-        <h2 className="text-lg font-bold text-gray-900">
-          Annotations ({annotations.length})
-        </h2>
-        {onClose && (
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+      <div className="p-4 border-b border-gray-200">
+        <div className="flex justify-between items-center mb-3">
+          <h2 className="text-lg font-bold text-gray-900">
+            Annotations ({filteredAnnotations.length})
+          </h2>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X size={20} />
+            </button>
+          )}
+        </div>
+
+        {/* Filter Dropdown */}
+        <div className="relative">
+          <label className="flex items-center gap-2 text-xs font-medium text-gray-600 mb-1.5">
+            <Filter size={14} />
+            Filter by Control
+          </label>
+          <select
+            value={filterByControl}
+            onChange={(e) => setFilterByControl(e.target.value)}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 bg-white cursor-pointer hover:border-cyan-600 transition-all duration-200"
           >
-            <X size={20} />
-          </button>
-        )}
+            <option value="ALL">All Annotations ({annotations.length})</option>
+            {usedControls.map(controlId => {
+              const control = controls.find(c => c.id === controlId);
+              const count = annotations.filter(a =>
+                a.annotationControls?.some(ac => ac.control.id === controlId)
+              ).length;
+              return (
+                <option key={controlId} value={controlId}>
+                  {controlId} - {control?.title || 'Unknown'} ({count})
+                </option>
+              );
+            })}
+          </select>
+        </div>
       </div>
 
       {/* Annotations List */}
@@ -70,9 +111,23 @@ export default function AnnotationPanel({
               Select text in the PDF to create highlights
             </p>
           </div>
+        ) : filteredAnnotations.length === 0 ? (
+          <div className="p-6 text-center text-gray-500">
+            <Filter size={48} className="mx-auto mb-3 text-gray-300" />
+            <p className="text-sm">No annotations match this filter</p>
+            <p className="text-xs mt-2">
+              Try selecting a different control
+            </p>
+            <button
+              onClick={() => setFilterByControl('ALL')}
+              className="mt-3 px-4 py-2 text-xs bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 hover:scale-105 active:scale-95 transition-all duration-200"
+            >
+              Clear Filter
+            </button>
+          </div>
         ) : (
           <div className="divide-y divide-gray-200">
-            {annotations.map((annotation) => (
+            {filteredAnnotations.map((annotation) => (
               <div
                 key={annotation.id}
                 className={`p-4 cursor-pointer transition-colors ${

@@ -14,7 +14,7 @@ export const getControls = async (req, res) => {
     const { category } = req.query;
 
     const where = {};
-    if (category) {
+    if (category && category !== 'ALL') {
       where.category = category;
     }
 
@@ -22,12 +22,32 @@ export const getControls = async (req, res) => {
       where,
       orderBy: {
         id: 'asc'
+      },
+      include: {
+        suggestedActions: {
+          orderBy: {
+            priority: 'desc'
+          }
+        },
+        _count: {
+          select: {
+            annotationControls: true,
+            interviewQAControls: true
+          }
+        }
       }
     });
 
+    // Transform to include counts as separate fields
+    const transformedControls = controls.map(control => ({
+      ...control,
+      relatedDocsCount: control._count.annotationControls,
+      relatedInterviewsCount: control._count.interviewQAControls
+    }));
+
     res.json({
-      controls,
-      total: controls.length
+      controls: transformedControls,
+      total: transformedControls.length
     });
 
   } catch (error) {
@@ -48,15 +68,51 @@ export const getControlById = async (req, res) => {
     const { id } = req.params;
 
     const control = await prisma.annexAControl.findUnique({
-      where: { id: parseInt(id) },
+      where: { id },
       include: {
+        suggestedActions: {
+          orderBy: {
+            priority: 'desc'
+          }
+        },
         annotationControls: {
           include: {
             annotation: {
               include: {
-                document: true
+                document: {
+                  select: {
+                    id: true,
+                    title: true,
+                    slug: true
+                  }
+                }
               }
             }
+          }
+        },
+        interviewQAControls: {
+          include: {
+            qa: {
+              include: {
+                interview: {
+                  include: {
+                    respondent: {
+                      select: {
+                        id: true,
+                        name: true,
+                        role: true
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        _count: {
+          select: {
+            annotationControls: true,
+            interviewQAControls: true
           }
         }
       }
@@ -69,7 +125,24 @@ export const getControlById = async (req, res) => {
       });
     }
 
-    res.json({ control });
+    // Extract unique documents and interviews
+    const relatedDocs = [...new Set(
+      control.annotationControls.map(ac => ac.annotation.document)
+    )].filter(Boolean);
+
+    const relatedInterviews = [...new Set(
+      control.interviewQAControls.map(iqac => iqac.qa.interview.respondent)
+    )].filter(Boolean);
+
+    res.json({
+      control: {
+        ...control,
+        relatedDocs,
+        relatedInterviews,
+        relatedDocsCount: control._count.annotationControls,
+        relatedInterviewsCount: control._count.interviewQAControls
+      }
+    });
 
   } catch (error) {
     console.error('Get control error:', error);

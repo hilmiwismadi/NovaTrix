@@ -94,6 +94,7 @@ export const createAnnotation = async (req, res) => {
         highlightedText: content, // Schema field name
         positionData: typeof position === 'string' ? position : JSON.stringify(position), // Schema field name
         color: color || '#FFFF00',
+        createdById: req.user?.id || null,
         annotationControls: {
           create: controlIds.map(controlId => ({
             controlId: controlId // controlId is a string like "A.5.1"
@@ -106,6 +107,31 @@ export const createAnnotation = async (req, res) => {
             control: true
           }
         }
+      }
+    });
+
+    // Create activity log
+    const controlsList = controlIds.length > 0
+      ? controlIds.join(', ')
+      : 'no controls';
+
+    const description = controlIds.length > 0
+      ? `Added annotation to ${document.title} tagged with ${controlsList}`
+      : `Added annotation to ${document.title}`;
+
+    await prisma.activity.create({
+      data: {
+        userId: req.user?.id || null,
+        activityType: 'annotation_created',
+        entityType: 'annotations',
+        entityId: annotation.id,
+        description: description,
+        metadata: JSON.stringify({
+          documentId: document.id,
+          documentTitle: document.title,
+          controlIds: controlIds,
+          pageNumber: pageNumber
+        })
       }
     });
 
@@ -294,6 +320,31 @@ export const addControlToAnnotation = async (req, res) => {
               control: true
             }
           }
+        }
+      });
+
+      // Create activity log for control tagging
+      const annotationWithDoc = await prisma.annotation.findUnique({
+        where: { id: parseInt(id) },
+        include: {
+          document: {
+            select: { id: true, title: true }
+          }
+        }
+      });
+
+      await prisma.activity.create({
+        data: {
+          userId: req.user?.id || null,
+          activityType: 'annotation_tagged',
+          entityType: 'annotations',
+          entityId: parseInt(id),
+          description: `Tagged annotation in ${annotationWithDoc.document.title} with control ${controlId}`,
+          metadata: JSON.stringify({
+            documentId: annotationWithDoc.documentId,
+            documentTitle: annotationWithDoc.document.title,
+            controlId: controlId
+          })
         }
       });
 
