@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Upload, Search, Loader2 } from 'lucide-react';
+import { Upload, Search, Loader2, Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Card from '../components/common/Card';
 import Badge from '../components/common/Badge';
@@ -13,8 +13,10 @@ export default function DocumentDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDoc, setSelectedDoc] = useState(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState(null);
 
-  const { documents, isLoading, fetchDocuments } = useDocumentStore();
+  const { documents, isLoading, fetchDocuments, deleteDocument } = useDocumentStore();
 
   // Fetch documents on mount
   useEffect(() => {
@@ -36,6 +38,30 @@ export default function DocumentDashboard() {
   const handleUploadSuccess = (newDocument) => {
     // Optionally show success message or navigate to the new document
     console.log('Document uploaded successfully:', newDocument);
+  };
+
+  // Handle delete button click
+  const handleDeleteClick = (e, doc) => {
+    e.stopPropagation(); // Prevent card click navigation
+    setDocumentToDelete(doc);
+    setIsDeleteModalOpen(true);
+  };
+
+  // Handle delete confirmation
+  const handleDeleteConfirm = async () => {
+    if (documentToDelete) {
+      const result = await deleteDocument(documentToDelete.slug);
+      if (result.success) {
+        setIsDeleteModalOpen(false);
+        setDocumentToDelete(null);
+      }
+    }
+  };
+
+  // Handle delete cancellation
+  const handleDeleteCancel = () => {
+    setIsDeleteModalOpen(false);
+    setDocumentToDelete(null);
   };
 
   return (
@@ -99,8 +125,17 @@ export default function DocumentDashboard() {
           {filteredDocs.map((doc) => (
             <Card key={doc.id} hoverable onClick={() => handleDocumentClick(doc)}>
               <div className="flex justify-between items-start mb-3">
-                <h3 className="text-lg font-semibold text-gray-900">{doc.title}</h3>
-                <Badge variant={doc.status}>{doc.status.toUpperCase()}</Badge>
+                <h3 className="text-lg font-semibold text-gray-900 flex-1">{doc.title}</h3>
+                <div className="flex items-center gap-2">
+                  <Badge variant={doc.status}>{doc.status.toUpperCase()}</Badge>
+                  <button
+                    onClick={(e) => handleDeleteClick(e, doc)}
+                    className="p-1.5 rounded-md text-red-600 hover:bg-red-50 transition-colors"
+                    title="Delete document"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
               </div>
               <div className="space-y-2 text-sm text-gray-600">
                 <p><span className="font-medium">Type:</span> {doc.fileType} • {doc.fileSize}</p>
@@ -133,6 +168,57 @@ export default function DocumentDashboard() {
         onClose={() => setIsUploadModalOpen(false)}
         onSuccess={handleUploadSuccess}
       />
+
+      {/* Delete Confirmation Modal */}
+      {isDeleteModalOpen && (
+        <>
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black bg-opacity-30 z-40"
+            onClick={handleDeleteCancel}
+          />
+
+          {/* Modal */}
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full pointer-events-auto">
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Delete Document</h3>
+              </div>
+
+              {/* Content */}
+              <div className="px-6 py-4">
+                <p className="text-gray-700 mb-2">
+                  Are you sure you want to delete this document?
+                </p>
+                <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded border border-gray-200">
+                  <span className="font-medium">Document:</span> {documentToDelete?.title}
+                </p>
+                <p className="text-sm text-red-600 mt-3">
+                  This action cannot be undone. All annotations and associated data will be permanently deleted.
+                </p>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3 rounded-b-lg">
+                <Button
+                  variant="secondary"
+                  onClick={handleDeleteCancel}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleDeleteConfirm}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  <Trash2 size={16} className="mr-2" />
+                  Delete
+                </Button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

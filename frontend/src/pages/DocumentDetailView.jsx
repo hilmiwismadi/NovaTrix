@@ -19,6 +19,8 @@ export default function DocumentDetailView() {
   const [isHeaderExpanded, setIsHeaderExpanded] = useState(true);
   const [isEditingSummary, setIsEditingSummary] = useState(false);
   const [summaryText, setSummaryText] = useState('');
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleText, setTitleText] = useState('');
 
   // Stores
   const { currentDocument, isLoading: docLoading, fetchDocumentBySlug, getPDFUrl, updateDocument } = useDocumentStore();
@@ -56,6 +58,7 @@ export default function DocumentDetailView() {
       fetchAnnotations(currentDocument.id);
       fetchControls();
       setSummaryText(currentDocument.summaryShort || '');
+      setTitleText(currentDocument.title || '');
     }
   }, [currentDocument]);
 
@@ -124,7 +127,7 @@ export default function DocumentDetailView() {
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-1">
             <Button
               variant="secondary"
               onClick={() => navigate('/documents')}
@@ -133,9 +136,54 @@ export default function DocumentDetailView() {
               <ArrowLeft size={16} />
               Back
             </Button>
-            <div>
-              <h1 className="text-lg font-bold text-gray-900">{currentDocument.title}</h1>
-              <p className="text-xs text-gray-500">
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                {!isEditingTitle ? (
+                  <>
+                    <h1 className="text-lg font-bold text-gray-900">{currentDocument.title}</h1>
+                    <button
+                      onClick={() => setIsEditingTitle(true)}
+                      className="text-cyan-600 hover:text-cyan-700 p-1 rounded hover:bg-cyan-50"
+                      title="Edit title"
+                    >
+                      <Edit2 size={16} />
+                    </button>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-2 flex-1">
+                    <input
+                      type="text"
+                      value={titleText}
+                      onChange={(e) => setTitleText(e.target.value)}
+                      className="text-lg font-bold text-gray-900 border border-cyan-500 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-cyan-500 flex-1"
+                      autoFocus
+                    />
+                    <button
+                      onClick={async () => {
+                        const result = await updateDocument(slug, { title: titleText });
+                        if (result.success) {
+                          setIsEditingTitle(false);
+                        }
+                      }}
+                      className="text-green-600 hover:text-green-700 p-1.5 rounded hover:bg-green-50"
+                      title="Save"
+                    >
+                      <Save size={18} />
+                    </button>
+                    <button
+                      onClick={() => {
+                        setTitleText(currentDocument?.title || '');
+                        setIsEditingTitle(false);
+                      }}
+                      className="text-gray-600 hover:text-gray-700 p-1.5 rounded hover:bg-gray-100"
+                      title="Cancel"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
                 {currentDocument.fileType} • {currentDocument.fileSize} • {annotations.length} annotation{annotations.length !== 1 ? 's' : ''}
               </p>
             </div>

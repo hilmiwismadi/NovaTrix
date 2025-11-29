@@ -24,9 +24,14 @@ export default function InterviewDashboard() {
   // Set first interview as selected when interviews load
   useEffect(() => {
     if (interviews.length > 0 && !selectedInterview) {
-      setSelectedInterview(interviews[0]);
+      // Fetch full interview details including Q&A
+      fetchInterviewById(interviews[0].id).then(result => {
+        if (result.success) {
+          setSelectedInterview(result.data);
+        }
+      });
     }
-  }, [interviews, selectedInterview]);
+  }, [interviews, selectedInterview, fetchInterviewById]);
 
   // Handle delete
   const handleDeleteClick = (interview) => {
@@ -40,9 +45,14 @@ export default function InterviewDashboard() {
       if (result.success) {
         setIsDeleteModalOpen(false);
         setInterviewToDelete(null);
-        // If deleted interview was selected, select the first one
+        // If deleted interview was selected, select the first remaining one
         if (selectedInterview?.id === interviewToDelete.id) {
-          setSelectedInterview(interviews.length > 1 ? interviews[0] : null);
+          const remainingInterviews = interviews.filter(i => i.id !== interviewToDelete.id);
+          if (remainingInterviews.length > 0) {
+            handleInterviewSelect(remainingInterviews[0]);
+          } else {
+            setSelectedInterview(null);
+          }
         }
       }
     }
@@ -66,6 +76,14 @@ export default function InterviewDashboard() {
           setSelectedInterview(result.data);
         }
       });
+    }
+  };
+
+  // Handle interview selection - fetch full details
+  const handleInterviewSelect = async (interview) => {
+    const result = await fetchInterviewById(interview.id);
+    if (result.success) {
+      setSelectedInterview(result.data);
     }
   };
 
@@ -121,7 +139,7 @@ export default function InterviewDashboard() {
             <Card
               key={interview.id}
               hoverable
-              onClick={() => setSelectedInterview(interview)}
+              onClick={() => handleInterviewSelect(interview)}
               className={selectedInterview?.id === interview.id ? 'ring-2 ring-cyan/60 border-cyan/30' : ''}
             >
               <div className="flex items-start gap-3">

@@ -1,0 +1,261 @@
+FULL IMPLEMENTATION GUIDE: HOW TO IMPLEMENT STATEMENT OF APPLICABILITY (SoA) ISO/IEC 27001:2022
+==============================================================================================
+
+PHASE 0 — PREPARATION
+---------------------
+0.1 Understand the Purpose of the SoA
+- The Statement of Applicability (SoA) is a mandatory ISO 27001 deliverable.
+- It lists every Annex A control, whether it is applicable or not, with justification, implementation status, and evidence.
+- It links risk assessment → control selection → policy mapping → actual evidence.
+
+0.2 Collect Initial Information
+Gather:
+- Organization structure
+- Existing IT and security policies
+- SOPs for HR, IT, infrastructure
+- System architecture, network diagram
+- Asset inventory
+- Prior audit results
+- Risk register (if any)
+- Job descriptions and roles
+
+The purpose is to understand the environment before mapping controls.
+
+
+PHASE 1 — DOCUMENT REVIEW
+--------------------------
+Goal: Identify existing controls, gaps, and maturity.
+
+1.1 Create a Document Review Checklist
+Examples:
+- ISMS Policy
+- Information Security Policy
+- Acceptable Use Policy
+- IAM SOP
+- Password Policy
+- Backups Policy
+- Incident Management Procedure
+- Vendor Management Policy
+- SDLC documentation
+- Network Security Policy
+- Business Continuity Plan
+
+1.2 Review Each Document Against Annex A Controls
+Create a table:
+- Control
+- Exists?
+- Evidence document
+- Quality (adequate / needs update / missing)
+- Notes
+
+This builds your baseline control landscape.
+
+
+PHASE 2 — INTERVIEWS & FIELD VALIDATION
+----------------------------------------
+Goal: Validate whether documented procedures match reality.
+
+2.1 Identify Stakeholders
+Interview:
+- CIO / CISO
+- IT security team
+- Network/Infrastructure team
+- System admins
+- HR Manager
+- DevOps team
+- Physical security team
+- Procurement
+- Business unit leads
+
+2.2 Prepare Interview Questions Per Annex A Domain
+Example for Access Control:
+- How do you create and revoke accounts?
+- Who approves privileged access?
+- How do you handle MFA?
+- When was the last access review?
+
+2.3 Conduct Interviews
+Capture:
+- What they say
+- What actually happens
+- Evidence provided
+- Major risks or issues mentioned
+
+2.4 Field Validation (On-Site Observations)
+Examples:
+- Inspect server room
+- Check visitor logs
+- Check backup devices
+- Observe CCTV
+- Check firewall rule change logs
+- Validate access control processes
+
+This gives you the factual implementation status.
+
+
+PHASE 3 — RISK ASSESSMENT
+--------------------------
+The SoA must be grounded in the risk assessment.
+
+3.1 Identify Assets
+Examples:
+- Information assets (documents, data)
+- Physical assets (laptops, servers)
+- Software assets (applications)
+- People (staff, contractors)
+- Services (cloud providers)
+- Third-party vendors
+
+3.2 Identify Threats & Vulnerabilities
+Examples:
+- Unauthorized access
+- Data loss
+- Ransomware
+- Insider threats
+- Weak password controls
+- Unpatched systems
+
+3.3 Score Risks
+Define likelihood, impact, and scoring scale:
+- 1-3 low
+- 4-9 medium
+- 10-25 high
+
+3.4 Link Risks to Annex A Controls
+Example:
+- High insider threat → need A.5.15 (identity mgmt) and A.5.17 (privileged access)
+- Ransomware → A.8.7 (malware protection)
+- Cloud risk → A.5.22 (third-party relationships)
+
+This determines which controls are applicable.
+
+
+PHASE 4 — BUILDING THE STATEMENT OF APPLICABILITY (SoA)
+--------------------------------------------------------
+This is the heart of the work.
+
+4.1 Build the SoA Master Table
+Include:
+- Control number
+- Control description
+- Applicability (Yes/No)
+- Justification
+- Implementation status (Implemented, Partially, Not implemented)
+- Evidence documents
+- Notes/gaps
+
+4.2 Example Row
+Control: A.5.15 Identity Management  
+Applicable: Yes  
+Justification: Required to mitigate unauthorized access risk.  
+Status: Partially Implemented  
+Evidence: IAM SOP, HR onboarding form  
+Notes: MFA rollout incomplete.
+
+4.3 Consistency Checks
+Ensure:
+- All applicable controls are tied to risks
+- All “not applicable” controls have legitimate explanation
+- Evidence is real and verified during interviews
+- No missing rows
+
+This forms the official SoA content.
+
+
+PHASE 5 — GAP ANALYSIS
+-----------------------
+Use the SoA status to identify gaps.
+
+5.1 Create a Gap Register
+Include:
+- Gap description
+- Related control
+- Severity (high/medium/low)
+- Action required
+- Control owner
+- Deadline
+
+Example:
+Gap: No formal vendor assessment  
+Control: A.5.22  
+Action: Implement vendor risk assessment checklist  
+Deadline: Q3 2025
+
+5.2 Review with Stakeholders
+Confirm:
+- Priorities
+- Budget impact
+- Technical feasibility
+
+
+PHASE 6 — DRAFTING THE FINAL SoA DOCUMENT
+-----------------------------------------
+6.1 Recommended Structure
+1. Introduction
+   - Purpose of SoA
+   - Scope of ISMS
+   - Methodology summary
+
+2. Annex A Mapping Table
+   - Full SoA table with all controls
+
+3. Justification of Non-Applicable Controls
+
+4. Implementation Status Summary
+
+5. Evidence Mapping
+   - Which documents prove each control
+
+6. Gap Summary and Remediation Plan
+
+Keep the structure clean and aligned with ISO expectations.
+
+
+PHASE 7 — MANAGEMENT REVIEW & APPROVAL
+---------------------------------------
+7.1 Present SoA to Leadership
+Include:
+- Summary of applicable vs not applicable controls
+- Key risks
+- Gaps
+- Budget needs
+- Roadmap for implementation
+
+7.2 Incorporate Leadership Feedback
+They may request:
+- More controls
+- Different justification wording
+- Revised risk interpretations
+
+7.3 Obtain Formal Sign-Off
+SoA must be approved by:
+- CISO / CIO
+- ISMS Committee
+- Top management (per ISO 27001 clause 5 leadership)
+
+This finalizes the SoA.
+
+
+PHASE 8 — FINAL DELIVERABLES PACKAGING
+---------------------------------------
+The final output should include:
+
+1. Statement of Applicability (SoA) — PDF and Word
+2. Risk Assessment Report
+3. Risk → Control Mapping Matrix
+4. Policy and Evidence Index
+5. Gap Register and Remediation Roadmap
+6. Executive Summary Presentation
+
+These documents together form the baseline of your ISO 27001 control implementation.
+
+
+OPTIONAL — AI SUPPORT FOR SoA CREATION
+---------------------------------------
+AI can assist in:
+- Classifying documents
+- Mapping policies to controls
+- Extracting relevant sentences
+- Drafting justifications
+- Summarizing interview transcripts
+- Generating evidence mapping
