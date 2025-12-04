@@ -1,7 +1,7 @@
 // SOATable.jsx
 // Statement of Applicability Table with ISO 27001:2022 Annex A Controls
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import useSOAStore from '../stores/soaStore';
 import Card from '../components/common/Card';
 import Input from '../components/common/Input';
@@ -10,7 +10,7 @@ import Textarea from '../components/common/Textarea';
 import Badge from '../components/common/Badge';
 import Button from '../components/common/Button';
 import EvidenceModal from '../components/soa/EvidenceModal';
-import { Search, Loader2, ChevronLeft, ChevronRight, Link as LinkIcon } from 'lucide-react';
+import { Search, Loader2, ChevronLeft, ChevronRight, Link as LinkIcon, Filter, ChevronDown } from 'lucide-react';
 
 // Category configuration for pagination
 const CATEGORY_PAGES = [
@@ -33,7 +33,8 @@ const STATUS_OPTIONS = [
   { value: 'implemented', label: 'Implemented' },
   { value: 'partially-implemented', label: 'Partially Implemented' },
   { value: 'not-implemented', label: 'Not Implemented' },
-  { value: 'planned', label: 'Planned' }
+  { value: 'planned', label: 'Planned' },
+  { value: 'to-be-determined', label: 'To Be Determined' }
 ];
 
 export default function SOATable() {
@@ -55,21 +56,55 @@ export default function SOATable() {
   const [selectedControlId, setSelectedControlId] = useState(null);
   const [expandedCells, setExpandedCells] = useState(new Set()); // Track expanded cells
 
+  // Filter state
+  const [selectedApplicabilityFilters, setSelectedApplicabilityFilters] = useState([]);
+  const [selectedStatusFilters, setSelectedStatusFilters] = useState([]);
+  const [showApplicabilityDropdown, setShowApplicabilityDropdown] = useState(false);
+  const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+
+  // Refs for dropdown
+  const applicabilityDropdownRef = useRef(null);
+  const statusDropdownRef = useRef(null);
+
   // Fetch SOA entries on mount
   useEffect(() => {
     fetchSOAEntries();
   }, [fetchSOAEntries]);
 
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (applicabilityDropdownRef.current && !applicabilityDropdownRef.current.contains(event.target)) {
+        setShowApplicabilityDropdown(false);
+      }
+      if (statusDropdownRef.current && !statusDropdownRef.current.contains(event.target)) {
+        setShowStatusDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Get current category configuration
   const currentCategory = CATEGORY_PAGES.find(cat => cat.id === currentPage);
 
-  // Filter entries by current category and search term
+  // Filter entries by current category, search term, and filters
   const filteredEntries = entries.filter(entry => {
     const matchesCategory = currentPage === 0 || entry.control?.category === currentCategory?.key;
     const matchesSearch = searchTerm === '' ||
       entry.control?.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       entry.control?.title?.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesCategory && matchesSearch;
+
+    // Applicability filter
+    const matchesApplicability = selectedApplicabilityFilters.length === 0 ||
+      selectedApplicabilityFilters.includes(entry.applicability || 'not-determined');
+
+    // Status filter
+    const matchesStatus = selectedStatusFilters.length === 0 ||
+      selectedStatusFilters.includes(entry.implementationStatus || 'not-implemented');
+
+    return matchesCategory && matchesSearch && matchesApplicability && matchesStatus;
   });
 
   // Handle cell edit start
@@ -126,6 +161,35 @@ export default function SOATable() {
     return expandedCells.has(`${entryId}-${field}`);
   };
 
+  // Toggle filter selection
+  const toggleApplicabilityFilter = (value) => {
+    setSelectedApplicabilityFilters(prev =>
+      prev.includes(value)
+        ? prev.filter(v => v !== value)
+        : [...prev, value]
+    );
+  };
+
+  const toggleStatusFilter = (value) => {
+    setSelectedStatusFilters(prev =>
+      prev.includes(value)
+        ? prev.filter(v => v !== value)
+        : [...prev, value]
+    );
+  };
+
+  // Clear filters
+  const clearApplicabilityFilters = () => setSelectedApplicabilityFilters([]);
+  const clearStatusFilters = () => setSelectedStatusFilters([]);
+
+  // Select all filters
+  const selectAllApplicabilityFilters = () => {
+    setSelectedApplicabilityFilters(APPLICABILITY_OPTIONS.map(opt => opt.value));
+  };
+  const selectAllStatusFilters = () => {
+    setSelectedStatusFilters(STATUS_OPTIONS.map(opt => opt.value));
+  };
+
   // Get badge color for category
   const getCategoryBadgeColor = (category) => {
     switch (category) {
@@ -159,6 +223,8 @@ export default function SOATable() {
       case 'partially-implemented':
         return 'partial';
       case 'planned':
+        return 'analyzed';
+      case 'to-be-determined':
         return 'default';
       default:
         return 'default';
@@ -189,29 +255,155 @@ export default function SOATable() {
         </div>
       </div>
 
-      {/* Category Pagination */}
-      <div className="flex items-center gap-2">
-        {CATEGORY_PAGES.map(cat => (
-          <button
-            key={cat.id}
-            onClick={() => setCurrentPage(cat.id)}
-            className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 border ${
-              currentPage === cat.id
-                ? 'bg-cyan-600 text-white border-cyan-600 shadow-soft'
-                : 'bg-white text-gray-700 border-gray-300 hover:border-cyan-600 hover:text-cyan-600'
-            }`}
-          >
-            {cat.shortLabel}
-          </button>
-        ))}
-      </div>
+      {/* Category Pagination and Filters */}
+      <div className="flex items-center justify-between gap-4">
+        {/* Category Buttons */}
+        <div className="flex items-center gap-2">
+          {CATEGORY_PAGES.map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => setCurrentPage(cat.id)}
+              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 border ${
+                currentPage === cat.id
+                  ? 'bg-cyan-600 text-white border-cyan-600 shadow-soft'
+                  : 'bg-white text-gray-700 border-gray-300 hover:border-cyan-600 hover:text-cyan-600'
+              }`}
+            >
+              {cat.shortLabel}
+            </button>
+          ))}
+        </div>
 
-      {/* Current Category Label */}
-      <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
-        <h2 className="text-lg font-semibold text-gray-900">{currentCategory?.label}</h2>
-        <p className="text-sm text-gray-600 mt-1">
-          Showing {filteredEntries.length} control{filteredEntries.length !== 1 ? 's' : ''}
-        </p>
+        {/* Filter Dropdowns */}
+        <div className="flex items-center gap-2">
+          {/* Applicability Filter */}
+          <div className="relative" ref={applicabilityDropdownRef}>
+            <button
+              onClick={() => setShowApplicabilityDropdown(!showApplicabilityDropdown)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 border ${
+                selectedApplicabilityFilters.length > 0
+                  ? 'bg-cyan-600 text-white border-cyan-600'
+                  : 'bg-white text-gray-700 border-gray-300 hover:border-cyan-600'
+              }`}
+            >
+              <Filter size={16} />
+              Applicability
+              {selectedApplicabilityFilters.length > 0 && (
+                <span className="bg-white text-cyan-600 px-2 py-0.5 rounded-full text-xs font-bold">
+                  {selectedApplicabilityFilters.length}
+                </span>
+              )}
+              <ChevronDown size={16} />
+            </button>
+
+            {showApplicabilityDropdown && (
+              <div className="absolute top-full right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                <div className="p-3 border-b border-gray-200 flex items-center justify-between">
+                  <span className="text-sm font-semibold text-gray-900">Filter by Applicability</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={selectAllApplicabilityFilters}
+                      className="text-xs text-cyan-600 hover:text-cyan-700 font-medium"
+                    >
+                      Select All
+                    </button>
+                    {selectedApplicabilityFilters.length > 0 && (
+                      <>
+                        <span className="text-gray-300">|</span>
+                        <button
+                          onClick={clearApplicabilityFilters}
+                          className="text-xs text-cyan-600 hover:text-cyan-700 font-medium"
+                        >
+                          Clear All
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="p-2 max-h-64 overflow-y-auto">
+                  {APPLICABILITY_OPTIONS.map(option => (
+                    <label
+                      key={option.value}
+                      className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 rounded cursor-pointer transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedApplicabilityFilters.includes(option.value)}
+                        onChange={() => toggleApplicabilityFilter(option.value)}
+                        className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
+                      />
+                      <span className="text-sm text-gray-700">{option.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Status Filter */}
+          <div className="relative" ref={statusDropdownRef}>
+            <button
+              onClick={() => setShowStatusDropdown(!showStatusDropdown)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-200 border ${
+                selectedStatusFilters.length > 0
+                  ? 'bg-cyan-600 text-white border-cyan-600'
+                  : 'bg-white text-gray-700 border-gray-300 hover:border-cyan-600'
+              }`}
+            >
+              <Filter size={16} />
+              Status of Implementation
+              {selectedStatusFilters.length > 0 && (
+                <span className="bg-white text-cyan-600 px-2 py-0.5 rounded-full text-xs font-bold">
+                  {selectedStatusFilters.length}
+                </span>
+              )}
+              <ChevronDown size={16} />
+            </button>
+
+            {showStatusDropdown && (
+              <div className="absolute top-full right-0 mt-2 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
+                <div className="p-3 border-b border-gray-200 flex items-center justify-between">
+                  <span className="text-sm font-semibold text-gray-900">Filter by Status</span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={selectAllStatusFilters}
+                      className="text-xs text-cyan-600 hover:text-cyan-700 font-medium"
+                    >
+                      Select All
+                    </button>
+                    {selectedStatusFilters.length > 0 && (
+                      <>
+                        <span className="text-gray-300">|</span>
+                        <button
+                          onClick={clearStatusFilters}
+                          className="text-xs text-cyan-600 hover:text-cyan-700 font-medium"
+                        >
+                          Clear All
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <div className="p-2 max-h-64 overflow-y-auto">
+                  {STATUS_OPTIONS.map(option => (
+                    <label
+                      key={option.value}
+                      className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 rounded cursor-pointer transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedStatusFilters.includes(option.value)}
+                        onChange={() => toggleStatusFilter(option.value)}
+                        className="w-4 h-4 text-cyan-600 border-gray-300 rounded focus:ring-cyan-500"
+                      />
+                      <span className="text-sm text-gray-700">{option.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Search Bar */}
