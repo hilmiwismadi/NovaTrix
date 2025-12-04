@@ -1,0 +1,15 @@
+{"timestamp":"2025-12-03T17:58:16.989Z","type":"MODEL_WARMUP","model":"saki007ster/CybersecurityRiskAnalyst","success":true,"durationMs":2335,"durationSec":"2.33"}
+{"timestamp":"2025-12-03T17:58:29.130Z","type":"MODEL_WARMUP","model":"saki007ster/CybersecurityRiskAnalyst","success":true,"durationMs":4448,"durationSec":"4.45"}
+{"timestamp":"2025-12-03T17:58:45.054Z","type":"MODEL_WARMUP","model":"saki007ster/CybersecurityRiskAnalyst","success":true,"durationMs":2643,"durationSec":"2.64"}
+{"timestamp":"2025-12-03T17:59:02.252Z","type":"MODEL_WARMUP","model":"saki007ster/CybersecurityRiskAnalyst","success":true,"durationMs":2521,"durationSec":"2.52"}
+{"timestamp":"2025-12-03T17:59:19.493Z","type":"MODEL_WARMUP","model":"saki007ster/CybersecurityRiskAnalyst","success":true,"durationMs":3309,"durationSec":"3.31"}
+{"timestamp":"2025-12-03T17:59:29.717Z","type":"MODEL_WARMUP","model":"saki007ster/CybersecurityRiskAnalyst","success":true,"durationMs":2273,"durationSec":"2.27"}
+{"timestamp":"2025-12-03T17:59:40.850Z","type":"MODEL_WARMUP","model":"saki007ster/CybersecurityRiskAnalyst","success":true,"durationMs":3383,"durationSec":"3.38"}
+{"timestamp":"2025-12-03T17:59:51.227Z","type":"MODEL_WARMUP","model":"saki007ster/CybersecurityRiskAnalyst","success":true,"durationMs":3929,"durationSec":"3.93"}
+{"timestamp":"2025-12-03T18:00:09.143Z","type":"MODEL_WARMUP","model":"saki007ster/CybersecurityRiskAnalyst","success":true,"durationMs":8693,"durationSec":"8.69"}
+{"timestamp":"2025-12-03T18:00:17.515Z","type":"MODEL_WARMUP","model":"saki007ster/CybersecurityRiskAnalyst","success":true,"durationMs":2320,"durationSec":"2.32"}
+{"timestamp":"2025-12-03T18:01:07.861Z","type":"SESSION_EVENT","sessionId":"1-1764784867860","userId":1,"event":"created"}
+{"timestamp":"2025-12-03T18:01:07.862Z","type":"AI_REQUEST","userId":1,"sessionId":"1-1764784867860","messageLength":65,"message":"tell what should i prepare to interview IT Security Head division","hasContext":true,"contextInfo":{"hasHistory":true,"historyCount":1,"includeContext":false}}
+{"timestamp":"2025-12-03T18:01:07.868Z","type":"CONVERSATION_HISTORY","sessionId":"1-1764784867860","messageCount":1,"history":[{"role":"user","contentLength":65,"preview":"tell what should i prepare to interview IT Securit"}]}
+{"timestamp":"2025-12-03T18:01:07.873Z","type":"OLLAMA_PROCESSING","sessionId":"1-1764784867860","model":"saki007ster/CybersecurityRiskAnalyst","status":"processing"}
+{"timestamp":"2025-12-03T19:15:13.179Z","type":"SESSION_EVENT","sessionId":"1-1764784867860","userId":1,"event":"expired"}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Upload, Search, Loader2, Trash2 } from 'lucide-react';
+import { Upload, Search, Loader2, Trash2, LayoutGrid, Table as TableIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Card from '../components/common/Card';
 import Badge from '../components/common/Badge';
@@ -15,6 +15,7 @@ export default function DocumentDashboard() {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [documentToDelete, setDocumentToDelete] = useState(null);
+  const [viewMode, setViewMode] = useState('card'); // 'card' or 'table'
 
   const { documents, isLoading, fetchDocuments, deleteDocument } = useDocumentStore();
 
@@ -64,6 +65,35 @@ export default function DocumentDashboard() {
     setDocumentToDelete(null);
   };
 
+  // Generate Document Management Log ID
+  const getDocumentLogId = (index) => {
+    return `DML-${String(index + 1).padStart(3, '0')}`;
+  };
+
+  // Get access level for document
+  const getAccessLevel = (doc) => {
+    // Map document status to access level
+    if (doc.title?.toLowerCase().includes('public') || doc.status === 'raw') return 'Public';
+    if (doc.title?.toLowerCase().includes('confidential') || doc.status === 'verified') return 'Confidential';
+    if (doc.title?.toLowerCase().includes('restricted')) return 'Restricted';
+    return 'Internal';
+  };
+
+  // Get version from document or default
+  const getVersion = (doc) => {
+    return doc.version || 'v1.0';
+  };
+
+  // Get last review date
+  const getLastReviewDate = (doc) => {
+    return doc.lastReviewDate || doc.uploadDate;
+  };
+
+  // Get owner/author
+  const getOwner = (doc) => {
+    return doc.uploadedBy?.fullName || doc.owner || 'Unknown';
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -84,15 +114,44 @@ export default function DocumentDashboard() {
         </Button>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-        <Input
-          placeholder="Search documents..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10 w-full"
-        />
+      {/* View Toggle Tabs and Search */}
+      <div className="flex items-center justify-between gap-4">
+        {/* View Mode Tabs */}
+        <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg">
+          <button
+            onClick={() => setViewMode('card')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-all duration-200 text-sm ${
+              viewMode === 'card'
+                ? 'bg-white text-cyan-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <LayoutGrid size={18} />
+            Card View
+          </button>
+          <button
+            onClick={() => setViewMode('table')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md font-medium transition-all duration-200 text-sm ${
+              viewMode === 'table'
+                ? 'bg-white text-cyan-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <TableIcon size={18} />
+            Table View
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
+          <Input
+            placeholder="Search documents..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 w-full"
+          />
+        </div>
       </div>
 
       {/* Loading State */}
@@ -119,8 +178,8 @@ export default function DocumentDashboard() {
         </div>
       )}
 
-      {/* Documents Grid */}
-      {!isLoading && filteredDocs.length > 0 && (
+      {/* Card View */}
+      {!isLoading && filteredDocs.length > 0 && viewMode === 'card' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {filteredDocs.map((doc) => (
             <Card key={doc.id} hoverable onClick={() => handleDocumentClick(doc)}>
@@ -151,6 +210,98 @@ export default function DocumentDashboard() {
             </Card>
           ))}
         </div>
+      )}
+
+      {/* Table View - Document Management Log */}
+      {!isLoading && filteredDocs.length > 0 && viewMode === 'table' && (
+        <Card>
+          <div className="overflow-x-auto">
+            <table className="w-full table-fixed">
+              <colgroup>
+                <col style={{ width: '8%' }} />
+                <col style={{ width: '30%' }} />
+                <col style={{ width: '8%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '12%' }} />
+                <col style={{ width: '18%' }} />
+                <col style={{ width: '12%' }} />
+              </colgroup>
+              <thead>
+                <tr className="border-b-2 border-gray-300">
+                  <th className="text-left py-4 px-4 font-semibold text-gray-900">ID</th>
+                  <th className="text-left py-4 px-4 font-semibold text-gray-900">Title</th>
+                  <th className="text-left py-4 px-4 font-semibold text-gray-900">Version</th>
+                  <th className="text-left py-4 px-4 font-semibold text-gray-900">Date Created</th>
+                  <th className="text-left py-4 px-4 font-semibold text-gray-900">Date Last Review</th>
+                  <th className="text-left py-4 px-4 font-semibold text-gray-900">Owner / Author</th>
+                  <th className="text-left py-4 px-4 font-semibold text-gray-900">Access Level</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredDocs.map((doc, index) => (
+                  <tr
+                    key={doc.id}
+                    onClick={() => handleDocumentClick(doc)}
+                    className="border-b border-gray-100 hover:bg-gray-50 transition-colors cursor-pointer"
+                  >
+                    <td className="py-4 px-4 align-top">
+                      <span className="text-sm font-medium text-gray-900">
+                        {getDocumentLogId(index)}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 align-top">
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-sm font-medium text-gray-900 line-clamp-2">
+                          {doc.title}
+                        </span>
+                        <button
+                          onClick={(e) => handleDeleteClick(e, doc)}
+                          className="p-1 rounded-md text-red-600 hover:bg-red-50 transition-all flex-shrink-0"
+                          title="Delete document"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                    <td className="py-4 px-4 align-top">
+                      <span className="text-sm text-gray-700">
+                        {getVersion(doc)}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 align-top">
+                      <span className="text-sm text-gray-700">
+                        {new Date(doc.uploadDate).toISOString().split('T')[0]}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 align-top">
+                      <span className="text-sm text-gray-700">
+                        {new Date(getLastReviewDate(doc)).toISOString().split('T')[0]}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 align-top">
+                      <span className="text-sm text-gray-700">
+                        {getOwner(doc)}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 align-top">
+                      <Badge
+                        variant={
+                          getAccessLevel(doc) === 'Public' ? 'default' :
+                          getAccessLevel(doc) === 'Internal' ? 'analyzed' :
+                          getAccessLevel(doc) === 'Confidential' ? 'partial' :
+                          'high'
+                        }
+                        size="sm"
+                      >
+                        {getAccessLevel(doc)}
+                      </Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
       )}
 
       {/* No Results */}

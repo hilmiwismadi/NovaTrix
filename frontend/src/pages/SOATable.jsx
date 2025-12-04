@@ -14,6 +14,7 @@ import { Search, Loader2, ChevronLeft, ChevronRight, Link as LinkIcon } from 'lu
 
 // Category configuration for pagination
 const CATEGORY_PAGES = [
+  { id: 0, key: null, label: 'All Annex A Controls', shortLabel: 'All' },
   { id: 1, key: 'ORGANIZATIONAL', label: 'A.5 - Organizational Controls', shortLabel: 'A.5' },
   { id: 2, key: 'PEOPLE', label: 'A.6 - People Controls', shortLabel: 'A.6' },
   { id: 3, key: 'PHYSICAL', label: 'A.7 - Physical Controls', shortLabel: 'A.7' },
@@ -46,12 +47,13 @@ export default function SOATable() {
   } = useSOAStore();
 
   // Local state
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [editingCell, setEditingCell] = useState(null); // { entryId, field }
   const [editValue, setEditValue] = useState('');
   const [showEvidenceModal, setShowEvidenceModal] = useState(false);
   const [selectedControlId, setSelectedControlId] = useState(null);
+  const [expandedCells, setExpandedCells] = useState(new Set()); // Track expanded cells
 
   // Fetch SOA entries on mount
   useEffect(() => {
@@ -63,7 +65,7 @@ export default function SOATable() {
 
   // Filter entries by current category and search term
   const filteredEntries = entries.filter(entry => {
-    const matchesCategory = entry.control?.category === currentCategory?.key;
+    const matchesCategory = currentPage === 0 || entry.control?.category === currentCategory?.key;
     const matchesSearch = searchTerm === '' ||
       entry.control?.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       entry.control?.title?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -88,6 +90,10 @@ export default function SOATable() {
   // Handle select change (immediate save)
   const handleSelectChange = async (entryId, field, value) => {
     await updateSOAEntry(entryId, { [field]: value });
+    // Close the editing cell after save
+    if (field === 'implementationStatus' || field === 'applicability') {
+      setEditingCell(null);
+    }
   };
 
   // Handle evidence modal
@@ -99,6 +105,25 @@ export default function SOATable() {
   const handleCloseEvidence = () => {
     setShowEvidenceModal(false);
     setSelectedControlId(null);
+  };
+
+  // Handle cell expansion toggle (specific to column and row)
+  const toggleCellExpansion = (entryId, field) => {
+    const cellKey = `${entryId}-${field}`;
+    setExpandedCells(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(cellKey)) {
+        newSet.delete(cellKey);
+      } else {
+        newSet.add(cellKey);
+      }
+      return newSet;
+    });
+  };
+
+  // Check if a specific cell is expanded
+  const isCellExpanded = (entryId, field) => {
+    return expandedCells.has(`${entryId}-${field}`);
   };
 
   // Get badge color for category
@@ -124,6 +149,36 @@ export default function SOATable() {
     return option?.label || value;
   };
 
+  // Get badge variant for implementation status
+  const getStatusBadgeVariant = (status) => {
+    switch (status) {
+      case 'implemented':
+        return 'compliant';
+      case 'not-implemented':
+        return 'non-compliant';
+      case 'partially-implemented':
+        return 'partial';
+      case 'planned':
+        return 'default';
+      default:
+        return 'default';
+    }
+  };
+
+  // Get badge variant for applicability
+  const getApplicabilityBadgeVariant = (applicability) => {
+    switch (applicability) {
+      case 'applicable':
+        return 'compliant';
+      case 'not-applicable':
+        return 'non-compliant';
+      case 'not-determined':
+        return 'default';
+      default:
+        return 'default';
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -135,47 +190,20 @@ export default function SOATable() {
       </div>
 
       {/* Category Pagination */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {CATEGORY_PAGES.map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => setCurrentPage(cat.id)}
-              className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 border ${
-                currentPage === cat.id
-                  ? 'bg-cyan-600 text-white border-cyan-600 shadow-soft'
-                  : 'bg-white text-gray-700 border-gray-300 hover:border-cyan-600 hover:text-cyan-600'
-              }`}
-            >
-              {cat.shortLabel}
-            </button>
-          ))}
-        </div>
-
-        {/* Pagination controls */}
-        <div className="flex items-center gap-2">
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-            disabled={currentPage === 1}
+      <div className="flex items-center gap-2">
+        {CATEGORY_PAGES.map(cat => (
+          <button
+            key={cat.id}
+            onClick={() => setCurrentPage(cat.id)}
+            className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 border ${
+              currentPage === cat.id
+                ? 'bg-cyan-600 text-white border-cyan-600 shadow-soft'
+                : 'bg-white text-gray-700 border-gray-300 hover:border-cyan-600 hover:text-cyan-600'
+            }`}
           >
-            <ChevronLeft size={16} />
-            Previous
-          </Button>
-          <span className="text-sm text-gray-600">
-            Page {currentPage} of {CATEGORY_PAGES.length}
-          </span>
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => setCurrentPage(prev => Math.min(CATEGORY_PAGES.length, prev + 1))}
-            disabled={currentPage === CATEGORY_PAGES.length}
-          >
-            Next
-            <ChevronRight size={16} />
-          </Button>
-        </div>
+            {cat.shortLabel}
+          </button>
+        ))}
       </div>
 
       {/* Current Category Label */}
@@ -217,25 +245,33 @@ export default function SOATable() {
       {!isLoading && !error && (
         <Card>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full table-fixed">
+              <colgroup>
+                <col style={{ width: '7%' }} />
+                <col style={{ width: '16%' }} />
+                <col style={{ width: '10%' }} />
+                <col style={{ width: '26%' }} />
+                <col style={{ width: '11%' }} />
+                <col style={{ width: '30%' }} />
+              </colgroup>
               <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-semibold text-gray-900 w-24">
+                <tr className="border-b-2 border-gray-300">
+                  <th className="text-left py-4 px-4 font-semibold text-gray-900">
                     Control ID
                   </th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-900 w-64">
+                  <th className="text-left py-4 px-4 font-semibold text-gray-900">
                     Control Name
                   </th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-900 w-32">
+                  <th className="text-left py-4 px-4 font-semibold text-gray-900">
                     Applicability
                   </th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-900 w-80">
+                  <th className="text-left py-4 px-4 font-semibold text-gray-900">
                     Justification
                   </th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-900 w-48">
+                  <th className="text-left py-4 px-4 font-semibold text-gray-900">
                     Status of Implementation
                   </th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-900">
+                  <th className="text-left py-4 px-4 font-semibold text-gray-900">
                     Implementation Method
                   </th>
                 </tr>
@@ -254,84 +290,172 @@ export default function SOATable() {
                       className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
                     >
                       {/* Control ID - Read-only */}
-                      <td className="py-3 px-4">
-                        <span className={`inline-block px-2 py-1 rounded text-xs font-medium ${getCategoryBadgeColor(entry.control?.category)}`}>
+                      <td className="py-4 px-4 align-top">
+                        <span className="text-sm font-medium text-gray-900">
                           {entry.control?.id}
                         </span>
                       </td>
 
                       {/* Control Name - Read-only */}
-                      <td className="py-3 px-4">
+                      <td className="py-4 px-4 align-top">
                         <span className="text-sm font-medium text-gray-900">
                           {entry.control?.title}
                         </span>
                       </td>
 
-                      {/* Applicability - Select Dropdown */}
-                      <td className="py-2 px-4">
-                        <Select
-                          value={entry.applicability || 'not-determined'}
-                          onChange={(e) => handleSelectChange(entry.id, 'applicability', e.target.value)}
-                          options={APPLICABILITY_OPTIONS}
-                          className="w-full text-sm"
-                        />
+                      {/* Applicability - Click to Edit */}
+                      <td className="py-4 px-4 align-top">
+                        {editingCell?.entryId === entry.id && editingCell?.field === 'applicability' ? (
+                          <Select
+                            value={entry.applicability || 'not-determined'}
+                            onChange={(e) => handleSelectChange(entry.id, 'applicability', e.target.value)}
+                            options={APPLICABILITY_OPTIONS}
+                            className="w-full text-sm border-cyan-500 focus:border-cyan-600"
+                            autoFocus
+                          />
+                        ) : (
+                          <div
+                            onClick={() => handleEditStart(entry.id, 'applicability', entry.applicability)}
+                            className="cursor-pointer hover:bg-cyan-50 p-2 rounded transition-colors inline-block"
+                          >
+                            <Badge
+                              variant={getApplicabilityBadgeVariant(entry.applicability || 'not-determined')}
+                              size="sm"
+                            >
+                              {getApplicabilityLabel(entry.applicability || 'not-determined')}
+                            </Badge>
+                          </div>
+                        )}
                       </td>
 
                       {/* Justification - Editable Textarea */}
-                      <td className="py-2 px-4">
+                      <td className="py-4 px-4 align-top">
                         {editingCell?.entryId === entry.id && editingCell?.field === 'justification' ? (
                           <Textarea
                             value={editValue}
                             onChange={(e) => setEditValue(e.target.value)}
                             onBlur={() => handleEditSave(entry.id, 'justification')}
-                            rows={2}
-                            className="w-full text-sm"
+                            rows={3}
+                            className="w-full text-sm border-cyan-500 focus:border-cyan-600"
                             autoFocus
                           />
                         ) : (
-                          <div
-                            onClick={() => handleEditStart(entry.id, 'justification', entry.justification)}
-                            className="min-h-[2.5rem] text-sm text-gray-600 cursor-pointer hover:bg-cyan-50 p-2 rounded transition-colors"
-                          >
-                            {entry.justification || (
-                              <span className="text-gray-400 italic">Click to add...</span>
+                          <div className="relative">
+                            <div
+                              onClick={() => handleEditStart(entry.id, 'justification', entry.justification)}
+                              className={`text-sm text-gray-700 cursor-pointer hover:bg-cyan-50 p-2 rounded border border-transparent hover:border-cyan-300 transition-all duration-300 ${
+                                !isCellExpanded(entry.id, 'justification') ? 'line-clamp-5' : ''
+                              }`}
+                              style={{
+                                transition: 'max-height 0.3s ease-in-out, opacity 0.3s ease-in-out'
+                              }}
+                            >
+                              {entry.justification || (
+                                <span className="text-gray-400 italic">Click to add...</span>
+                              )}
+                            </div>
+                            {entry.justification && entry.justification.length > 200 && !isCellExpanded(entry.id, 'justification') && (
+                              <div className="absolute bottom-0 right-0 left-0 h-12 bg-gradient-to-t from-white via-white/95 to-transparent pointer-events-none" />
+                            )}
+                            {entry.justification && entry.justification.length > 200 && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleCellExpansion(entry.id, 'justification');
+                                }}
+                                className={`group inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-cyan-600 bg-white/95 backdrop-blur-sm hover:bg-cyan-100 border border-cyan-200 hover:border-cyan-300 rounded-md transition-all duration-300 hover:shadow-lg hover:scale-105 active:scale-95 z-10 ${
+                                  !isCellExpanded(entry.id, 'justification')
+                                    ? 'absolute bottom-2 right-2'
+                                    : 'mt-2'
+                                }`}
+                              >
+                                <span className="transition-transform duration-300 group-hover:translate-x-0.5">
+                                  {isCellExpanded(entry.id, 'justification') ? '▲' : '▼'}
+                                </span>
+                                {isCellExpanded(entry.id, 'justification') ? 'Read Less' : 'Read More'}
+                              </button>
                             )}
                           </div>
                         )}
                       </td>
 
-                      {/* Implementation Status - Select Dropdown */}
-                      <td className="py-2 px-4">
-                        <Select
-                          value={entry.implementationStatus || 'not-implemented'}
-                          onChange={(e) => handleSelectChange(entry.id, 'implementationStatus', e.target.value)}
-                          options={STATUS_OPTIONS}
-                          className="w-full text-sm"
-                        />
+                      {/* Implementation Status - Click to Edit */}
+                      <td className="py-4 px-4 align-top">
+                        {editingCell?.entryId === entry.id && editingCell?.field === 'implementationStatus' ? (
+                          <Select
+                            value={entry.implementationStatus || 'not-implemented'}
+                            onChange={(e) => handleSelectChange(entry.id, 'implementationStatus', e.target.value)}
+                            options={STATUS_OPTIONS}
+                            className="w-full text-sm border-cyan-500 focus:border-cyan-600"
+                            autoFocus
+                          />
+                        ) : (
+                          <div
+                            onClick={() => handleEditStart(entry.id, 'implementationStatus', entry.implementationStatus)}
+                            className="cursor-pointer hover:bg-cyan-50 p-2 rounded transition-colors inline-block"
+                          >
+                            <Badge
+                              variant={getStatusBadgeVariant(entry.implementationStatus || 'not-implemented')}
+                              size="sm"
+                            >
+                              {getStatusLabel(entry.implementationStatus || 'not-implemented')}
+                            </Badge>
+                          </div>
+                        )}
                       </td>
 
                       {/* Implementation Method - Editable Textarea + Evidence Badge */}
-                      <td className="py-2 px-4">
+                      <td className="py-4 px-4 align-top">
                         <div className="flex items-start gap-2">
-                          {editingCell?.entryId === entry.id && editingCell?.field === 'implementationMethod' ? (
-                            <Textarea
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              onBlur={() => handleEditSave(entry.id, 'implementationMethod')}
-                              rows={2}
-                              className="flex-1 text-sm"
-                              autoFocus
-                            />
-                          ) : (
-                            <div
-                              onClick={() => handleEditStart(entry.id, 'implementationMethod', entry.implementationMethod)}
-                              className="flex-1 min-h-[2.5rem] text-sm text-gray-600 cursor-pointer hover:bg-cyan-50 p-2 rounded transition-colors"
-                            >
-                              {entry.implementationMethod || (
-                                <span className="text-gray-400 italic">Click to add...</span>
-                              )}
-                            </div>
-                          )}
+                          <div className="flex-1 relative">
+                            {editingCell?.entryId === entry.id && editingCell?.field === 'implementationMethod' ? (
+                              <Textarea
+                                value={editValue}
+                                onChange={(e) => setEditValue(e.target.value)}
+                                onBlur={() => handleEditSave(entry.id, 'implementationMethod')}
+                                rows={3}
+                                className="w-full text-sm border-cyan-500 focus:border-cyan-600"
+                                autoFocus
+                              />
+                            ) : (
+                              <>
+                                <div
+                                  onClick={() => handleEditStart(entry.id, 'implementationMethod', entry.implementationMethod)}
+                                  className={`text-sm text-gray-700 cursor-pointer hover:bg-cyan-50 p-2 rounded border border-transparent hover:border-cyan-300 transition-all duration-300 ${
+                                    !isCellExpanded(entry.id, 'implementationMethod') ? 'line-clamp-5' : ''
+                                  }`}
+                                  style={{
+                                    transition: 'max-height 0.3s ease-in-out, opacity 0.3s ease-in-out'
+                                  }}
+                                >
+                                  {entry.implementationMethod || (
+                                    <span className="text-gray-400 italic">Click to add...</span>
+                                  )}
+                                </div>
+                                {entry.implementationMethod && entry.implementationMethod.length > 200 && !isCellExpanded(entry.id, 'implementationMethod') && (
+                                  <div className="absolute bottom-0 right-0 left-0 h-12 bg-gradient-to-t from-white via-white/95 to-transparent pointer-events-none" />
+                                )}
+                                {entry.implementationMethod && entry.implementationMethod.length > 200 && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleCellExpansion(entry.id, 'implementationMethod');
+                                    }}
+                                    className={`group inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-cyan-600 bg-white/95 backdrop-blur-sm hover:bg-cyan-100 border border-cyan-200 hover:border-cyan-300 rounded-md transition-all duration-300 hover:shadow-lg hover:scale-105 active:scale-95 z-10 ${
+                                      !isCellExpanded(entry.id, 'implementationMethod')
+                                        ? 'absolute bottom-2 right-2'
+                                        : 'mt-2'
+                                    }`}
+                                  >
+                                    <span className="transition-transform duration-300 group-hover:translate-x-0.5">
+                                      {isCellExpanded(entry.id, 'implementationMethod') ? '▲' : '▼'}
+                                    </span>
+                                    {isCellExpanded(entry.id, 'implementationMethod') ? 'Read Less' : 'Read More'}
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </div>
 
                           {/* Evidence Badge */}
                           {entry.evidenceSummary && (
@@ -340,7 +464,7 @@ export default function SOATable() {
                           ) && (
                             <button
                               onClick={() => handleShowEvidence(entry.control.id)}
-                              className="flex items-center gap-1 px-2 py-1 text-xs font-medium bg-cyan-100 text-cyan-800 rounded hover:bg-cyan-200 transition-colors whitespace-nowrap"
+                              className="flex items-center gap-1 px-2 py-1 text-xs font-medium bg-cyan-100 text-cyan-800 rounded hover:bg-cyan-200 transition-colors whitespace-nowrap flex-shrink-0"
                               title="View evidence"
                             >
                               <LinkIcon size={14} />

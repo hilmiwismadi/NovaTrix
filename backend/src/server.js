@@ -11,7 +11,9 @@ import controlsRoutes from './routes/controls.routes.js';
 import interviewsRoutes from './routes/interviews.routes.js';
 import activitiesRoutes from './routes/activities.routes.js';
 import soaRoutes from './routes/soa.routes.js';
+import aiRoutes from './routes/ai.routes.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+import { warmupModel } from './services/ollamaService.js';
 
 // Load environment variables
 dotenv.config();
@@ -64,6 +66,7 @@ app.use('/api/controls', controlsRoutes);
 app.use('/api/interviews', interviewsRoutes);
 app.use('/api/activities', activitiesRoutes);
 app.use('/api/soa', soaRoutes);
+app.use('/api/ai', aiRoutes);
 
 // 404 handler
 app.use(notFoundHandler);
@@ -72,11 +75,18 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 NovaTrix Backend Server running on port ${PORT}`);
   console.log(`📍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🌐 CORS enabled for: http://localhost:5173-5183`);
   console.log(`\n✅ Server ready to accept requests`);
+
+  // Warm up Ollama model (optional, runs in background)
+  setTimeout(() => {
+    warmupModel().catch(err => {
+      console.log('ℹ️  Ollama warmup skipped - will load on first request');
+    });
+  }, 2000); // Wait 2 seconds after server starts
 });
 
 export default app;

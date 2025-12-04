@@ -1,9 +1,13 @@
-import { LogOut, User } from 'lucide-react';
+import { LogOut, User, Bot } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../stores/authStore';
+import useChatStore from '../../stores/chatStore';
+import { useSidebar } from '../../contexts/SidebarContext';
 
 export default function Header() {
   const { user, logout } = useAuthStore();
+  const { toggleChat } = useChatStore();
+  const { isCollapsed, setIsCollapsed } = useSidebar();
   const navigate = useNavigate();
 
   const handleLogout = async () => {
@@ -11,14 +15,22 @@ export default function Header() {
     navigate('/login');
   };
 
+  const toggleSidebar = () => {
+    setIsCollapsed(!isCollapsed);
+  };
+
   return (
     <header className="h-16 fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-glass border-b border-gray-200/50">
       <div className="h-full px-8 flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <div className="flex items-center text-[28px] font-semibold tracking-tight leading-none">
+          <button
+            onClick={toggleSidebar}
+            className="flex items-center text-[28px] font-semibold tracking-tight leading-none cursor-pointer hover:opacity-80 transition-opacity duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 rounded px-2 py-1"
+            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
             <span className="text-gray-900">Nova</span>
             <span className="text-cyan-600">Trix</span>
-          </div>
+          </button>
           <div className="h-6 w-px bg-gray-300/50" />
           <div className="text-sm text-gray-500 font-normal">
             ISO 27001 Compliance Management System
@@ -34,6 +46,15 @@ export default function Header() {
               <p className="text-xs text-gray-500">{user?.email}</p>
             </div>
           </div>
+
+          <button
+            onClick={toggleChat}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg border border-gray-200 hover:border-cyan-200 hover:scale-105 active:scale-95 transition-all duration-200"
+            title="AI Assistant"
+          >
+            <Bot size={18} />
+            <span>AI Assistant</span>
+          </button>
 
           <button
             onClick={handleLogout}
