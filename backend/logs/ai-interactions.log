@@ -13,3 +13,13 @@
 {"timestamp":"2025-12-03T18:01:07.868Z","type":"CONVERSATION_HISTORY","sessionId":"1-1764784867860","messageCount":1,"history":[{"role":"user","contentLength":65,"preview":"tell what should i prepare to interview IT Securit"}]}
 {"timestamp":"2025-12-03T18:01:07.873Z","type":"OLLAMA_PROCESSING","sessionId":"1-1764784867860","model":"saki007ster/CybersecurityRiskAnalyst","status":"processing"}
 {"timestamp":"2025-12-03T19:15:13.179Z","type":"SESSION_EVENT","sessionId":"1-1764784867860","userId":1,"event":"expired"}
+{"timestamp":"2025-12-23T13:02:30.096Z","type":"MODEL_WARMUP","model":"saki007ster/CybersecurityRiskAnalyst","success":true,"durationMs":38820,"durationSec":"38.82"}
+{"timestamp":"2025-12-23T13:04:55.747Z","type":"SESSION_EVENT","sessionId":"1-1766495095746","userId":1,"event":"created"}
+{"timestamp":"2025-12-23T13:04:55.748Z","type":"AI_REQUEST","userId":1,"sessionId":"1-1766495095746","messageLength":3,"message":"cek","hasContext":true,"contextInfo":{"hasHistory":true,"historyCount":1,"includeContext":false}}
+{"timestamp":"2025-12-23T13:04:55.752Z","type":"CONVERSATION_HISTORY","sessionId":"1-1766495095746","messageCount":1,"history":[{"role":"user","contentLength":3,"preview":"cek"}]}
+{"timestamp":"2025-12-23T13:04:55.755Z","type":"OLLAMA_PROCESSING","sessionId":"1-1766495095746","model":"saki007ster/CybersecurityRiskAnalyst","status":"processing"}
+{"timestamp":"2025-12-23T13:05:36.406Z","type":"AI_RESPONSE","userId":1,"sessionId":"1-1766495095746","responseLength":186,"response":"It looks like we got disconnected!\n\nTo start fresh, what's your question or topic related to ISO 27001? Do you have a specific control or requirement in mind that you'd like guidance on?","processingTimeMs":40651,"processingTimeSec":"40.65"}
+{"timestamp":"2025-12-23T13:15:48.575Z","type":"AI_REQUEST","userId":1,"sessionId":"1-1766495095746","messageLength":54,"message":"tell me that you know about annex about people control","hasContext":true,"contextInfo":{"hasHistory":true,"historyCount":3,"includeContext":false}}
+{"timestamp":"2025-12-23T13:15:48.585Z","type":"CONVERSATION_HISTORY","sessionId":"1-1766495095746","messageCount":3,"history":[{"role":"user","contentLength":3,"preview":"cek"},{"role":"assistant","contentLength":186,"preview":"It looks like we got disconnected!\n\nTo start fresh"},{"role":"user","contentLength":54,"preview":"tell me that you know about annex about people con"}]}
+{"timestamp":"2025-12-23T13:15:48.588Z","type":"OLLAMA_PROCESSING","sessionId":"1-1766495095746","model":"saki007ster/CybersecurityRiskAnalyst","status":"processing"}
+{"timestamp":"2025-12-23T14:16:49.127Z","type":"SESSION_EVENT","sessionId":"1-1766495095746","userId":1,"event":"expired"}
