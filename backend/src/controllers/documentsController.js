@@ -340,9 +340,7 @@ export const servePDF = async (req, res) => {
       });
     }
 
-    // Set CORS headers for PDF.js
-    res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'http://localhost:5174');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    // Set headers for PDF.js
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${document.title}.pdf"`);
 

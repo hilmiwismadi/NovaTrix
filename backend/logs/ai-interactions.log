@@ -23,3 +23,11 @@
 {"timestamp":"2025-12-23T13:15:48.585Z","type":"CONVERSATION_HISTORY","sessionId":"1-1766495095746","messageCount":3,"history":[{"role":"user","contentLength":3,"preview":"cek"},{"role":"assistant","contentLength":186,"preview":"It looks like we got disconnected!\n\nTo start fresh"},{"role":"user","contentLength":54,"preview":"tell me that you know about annex about people con"}]}
 {"timestamp":"2025-12-23T13:15:48.588Z","type":"OLLAMA_PROCESSING","sessionId":"1-1766495095746","model":"saki007ster/CybersecurityRiskAnalyst","status":"processing"}
 {"timestamp":"2025-12-23T14:16:49.127Z","type":"SESSION_EVENT","sessionId":"1-1766495095746","userId":1,"event":"expired"}
+{"timestamp":"2026-02-25T06:18:20.185Z","type":"MODEL_WARMUP","model":"saki007ster/CybersecurityRiskAnalyst","success":true,"durationMs":47491,"durationSec":"47.49"}
+{"timestamp":"2026-02-25T06:22:52.488Z","type":"MODEL_WARMUP","model":"saki007ster/CybersecurityRiskAnalyst","success":true,"durationMs":3772,"durationSec":"3.77"}
+{"timestamp":"2026-02-25T06:23:07.011Z","type":"MODEL_WARMUP","model":"saki007ster/CybersecurityRiskAnalyst","success":true,"durationMs":3724,"durationSec":"3.72"}
+{"timestamp":"2026-02-25T07:27:32.478Z","type":"SESSION_EVENT","sessionId":"1-1772004452478","userId":1,"event":"created"}
+{"timestamp":"2026-02-25T07:27:32.481Z","type":"AI_REQUEST","userId":1,"sessionId":"1-1772004452478","messageLength":3,"message":"cek","hasContext":true,"contextInfo":{"hasHistory":true,"historyCount":1,"includeContext":false}}
+{"timestamp":"2026-02-25T07:27:32.487Z","type":"CONVERSATION_HISTORY","sessionId":"1-1772004452478","messageCount":1,"history":[{"role":"user","contentLength":3,"preview":"cek"}]}
+{"timestamp":"2026-02-25T07:27:32.491Z","type":"OLLAMA_PROCESSING","sessionId":"1-1772004452478","model":"saki007ster/CybersecurityRiskAnalyst","status":"processing"}
+{"timestamp":"2026-02-25T08:38:01.325Z","type":"SESSION_EVENT","sessionId":"1-1772004452478","userId":1,"event":"expired"}

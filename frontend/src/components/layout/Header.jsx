@@ -28,8 +28,8 @@ export default function Header() {
             className="flex items-center text-[28px] font-semibold tracking-tight leading-none cursor-pointer hover:opacity-80 transition-opacity duration-200 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 rounded px-2 py-1"
             title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            <span className="text-gray-900">Nova</span>
-            <span className="text-cyan-600">Trix</span>
+            <span className="text-gray-900">Skrip</span>
+            <span className="text-cyan-600">si</span>
           </button>
           <div className="h-6 w-px bg-gray-300/50" />
           <div className="text-sm text-gray-500 font-normal">
