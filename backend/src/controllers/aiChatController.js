@@ -1,4 +1,4 @@
-import { sendChatMessage, checkOllamaStatus, generateContextualPrompt } from '../services/ollamaService.js';
+import { sendAIMessage, checkAIStatus, generateContextualPrompt } from '../services/ollamaService.js';
 import { PrismaClient } from '@prisma/client';
 import {
   logAIRequest,
@@ -106,8 +106,8 @@ export const chat = async (req, res) => {
       }
     }
 
-    // Send to Ollama
-    const result = await sendChatMessage(enhancedMessage, conversationHistory, currentSessionId);
+    // Send to active AI provider (OLLAMA or RAG)
+    const result = await sendAIMessage(enhancedMessage, conversationHistory, currentSessionId);
 
     if (!result.success) {
       // Log the error
@@ -157,9 +157,10 @@ export const chat = async (req, res) => {
  */
 export const getStatus = async (req, res) => {
   try {
-    const status = await checkOllamaStatus();
+    const status = await checkAIStatus();
 
     return res.json({
+      provider: status.provider || 'OLLAMA',
       status: status.available ? 'online' : 'offline',
       modelLoaded: status.modelLoaded,
       availableModels: status.models

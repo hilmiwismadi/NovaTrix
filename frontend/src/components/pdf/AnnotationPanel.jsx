@@ -6,6 +6,35 @@ import { X, Tag, Trash2, Plus, Check, Info, Copy, Filter } from 'lucide-react';
 import Button from '../common/Button';
 import Badge from '../common/Badge';
 
+const parseAiSummary = (summary = '') => {
+  if (!summary) return null;
+  const text = String(summary);
+  const read = (label) => {
+    const pattern = new RegExp(`\\*\\*${label}\\*\\*:?\\s*([\\s\\S]*?)(?=\\n\\*\\*|$)`, 'i');
+    return text.match(pattern)?.[1]?.trim() || '';
+  };
+  const controlId = read('Control ID');
+  const applicable = read('Applicable');
+  const implementationStatus = read('Implementation Status');
+  const justification = read('Justification');
+  const recommendation = read('Recommendation');
+  const retrievedRaw = read('Retrieved Controls');
+  const retrievedControls = retrievedRaw
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith('-'))
+    .map((line) => line.replace(/^-+\s*/, ''));
+
+  return {
+    controlId,
+    applicable,
+    implementationStatus,
+    justification,
+    recommendation,
+    retrievedControls
+  };
+};
+
 export default function AnnotationPanel({
   annotations = [],
   controls = [],
@@ -48,6 +77,7 @@ export default function AnnotationPanel({
 
   // Get controls already linked to selected annotation
   const linkedControlIds = selectedAnnotation?.annotationControls?.map(ac => ac.control.id) || [];
+  const parsedSummary = parseAiSummary(selectedAnnotation?.summary || '');
 
   const handleControlToggle = (controlId) => {
     if (linkedControlIds.includes(controlId)) {
@@ -422,8 +452,43 @@ export default function AnnotationPanel({
                 <div>
                   <label className="text-xs font-semibold text-gray-500 uppercase">AI Summary</label>
                   <div className="mt-1 p-3 bg-gradient-to-r from-cyan-50 to-blue-50 rounded border border-cyan-200">
-                    {selectedAnnotation.summary ? (
-                      <p className="text-sm text-gray-900">{selectedAnnotation.summary}</p>
+                    {selectedAnnotation.summary && parsedSummary ? (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          <div className="bg-white border border-cyan-100 rounded p-2">
+                            <p className="text-[10px] text-gray-500 uppercase">Control ID</p>
+                            <p className="text-sm font-semibold text-gray-900">{parsedSummary.controlId || '-'}</p>
+                          </div>
+                          <div className="bg-white border border-cyan-100 rounded p-2">
+                            <p className="text-[10px] text-gray-500 uppercase">Applicable</p>
+                            <p className="text-sm font-semibold text-gray-900">{parsedSummary.applicable || '-'}</p>
+                          </div>
+                          <div className="bg-white border border-cyan-100 rounded p-2">
+                            <p className="text-[10px] text-gray-500 uppercase">Implementation</p>
+                            <p className="text-sm font-semibold text-gray-900">{parsedSummary.implementationStatus || '-'}</p>
+                          </div>
+                        </div>
+                        <div className="bg-white border border-cyan-100 rounded p-2">
+                          <p className="text-[10px] text-gray-500 uppercase mb-1">Justification</p>
+                          <p className="text-sm text-gray-900 whitespace-pre-wrap">{parsedSummary.justification || '-'}</p>
+                        </div>
+                        <div className="bg-white border border-cyan-100 rounded p-2">
+                          <p className="text-[10px] text-gray-500 uppercase mb-1">Recommendation</p>
+                          <p className="text-sm text-gray-900 whitespace-pre-wrap">{parsedSummary.recommendation || '-'}</p>
+                        </div>
+                        <div className="bg-white border border-cyan-100 rounded p-2">
+                          <p className="text-[10px] text-gray-500 uppercase mb-1">Retrieved Controls</p>
+                          {parsedSummary.retrievedControls.length > 0 ? (
+                            <ul className="space-y-1">
+                              {parsedSummary.retrievedControls.map((item, idx) => (
+                                <li key={`${item}-${idx}`} className="text-sm text-gray-900">{item}</li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-sm text-gray-600">-</p>
+                          )}
+                        </div>
+                      </div>
                     ) : (
                       <p className="text-sm text-gray-500 italic">
                         AI-generated summary will appear here

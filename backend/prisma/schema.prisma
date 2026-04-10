@@ -27,6 +27,7 @@ model User {
   createdQuestions  Question[]
   activities        Activity[]
   declarations      Declaration[]
+  ragTestRuns       RagTestRun[]
 
   @@map("users")
 }
@@ -55,6 +56,7 @@ model Document {
   annotations   Annotation[]
   gaps          Gap[]
   evidenceItems EvidenceItem[]
+  ragTestRuns   RagTestRun[]
 
   @@map("documents")
 }
@@ -108,6 +110,11 @@ model Annotation {
   positionData    String   @map("position_data") // JSON: {boundingRect, rects, pageNumber}
   highlightedText String   @map("highlighted_text")
   annotationText  String?  @map("annotation_text")
+  summary         String?  @map("summary")
+  ragRawOutput    String?  @map("rag_raw_output")
+  ragElapsedMs    Int?     @map("rag_elapsed_ms")
+  ragStatus       String?  @map("rag_status")
+  ragControlId    String?  @map("rag_control_id")
   color           String   @default("#ffeb3b")
   createdById     Int?     @map("created_by")
   createdAt       DateTime @default(now()) @map("created_at")
@@ -326,4 +333,25 @@ model EvidenceItem {
   document Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
 
   @@map("evidence_items")
+}
+
+// RAG testing log table (/ragtest & /ragtest/data)
+model RagTestRun {
+  id              Int      @id @default(autoincrement())
+  userId          Int?     @map("user_id")
+  documentId      Int?     @map("document_id")
+  queryText       String   @map("query_text")
+  outputText      String?  @map("output_text")
+  processingTimeMs Int?    @map("processing_time_ms")
+  status          String   @default("pending") // pending, success, failed
+  errorMessage    String?  @map("error_message")
+  detailedLog     String?  @map("detailed_log")
+  provider        String?  @default("RAG") // RAG, OLLAMA
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  document  Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+
+  @@map("rag_test_runs")
 }

@@ -1,6 +1,8 @@
 import axios from 'axios';
 import { logOllamaProcessing, logModelWarmup } from '../utils/logger.js';
+import { sendRagMessage, checkRagStatus } from './ragService.js';
 
+const AI_PROVIDER = (process.env.AI_PROVIDER || 'OLLAMA').toUpperCase();
 const OLLAMA_API_URL = process.env.OLLAMA_API_URL || 'http://localhost:11434';
 const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'saki007ster/CybersecurityRiskAnalyst';
 
@@ -188,4 +190,33 @@ export const warmupModel = async () => {
     console.warn('   First AI request may be slower than usual');
     return false;
   }
+};
+
+export const sendAIMessage = async (userMessage, conversationHistory = [], sessionId = null) => {
+  if (AI_PROVIDER === 'RAG') {
+    return sendRagMessage(userMessage, conversationHistory, sessionId);
+  }
+
+  return sendChatMessage(userMessage, conversationHistory, sessionId);
+};
+
+export const checkAIStatus = async () => {
+  if (AI_PROVIDER === 'RAG') {
+    const ragStatus = await checkRagStatus();
+    return {
+      provider: 'RAG',
+      ...ragStatus
+    };
+  }
+
+  const ollamaStatus = await checkOllamaStatus();
+  return {
+    provider: 'OLLAMA',
+    ...ollamaStatus
+  };
+};
+
+export const shouldWarmupModel = () => {
+  const warmupEnabled = (process.env.ENABLE_AI_WARMUP || 'true').toLowerCase() === 'true';
+  return warmupEnabled && AI_PROVIDER === 'OLLAMA';
 };

@@ -27,12 +27,16 @@ export default function PDFAnnotationViewer({
   annotations = [],
   selectedAnnotation,
   onAnnotationCreate,
-  onAnnotationSelect
+  onAnnotationSelect,
+  onTextSelected
 }) {
   const [highlightColor, setHighlightColor] = useState(HIGHLIGHT_COLORS[0].value);
   const highlightColorRef = useRef(highlightColor); // Keep ref in sync with state
   const [message, setMessage] = useState('');
   const [selectionPopup, setSelectionPopup] = useState(null); // { text, position, annotationData, x, y }
+  const viewerContainerRef = useRef(null);
+  const mouseUpHandlerRef = useRef(null);
+  const lastSelectionRef = useRef({ signature: '', at: 0 });
   const pageNavigationPluginInstance = pageNavigationPlugin();
   const { jumpToPage } = pageNavigationPluginInstance;
 
@@ -194,10 +198,14 @@ export default function PDFAnnotationViewer({
   const { ZoomIn: ZoomInButton, ZoomOut: ZoomOutButton, Zoom } = zoomPluginInstance;
 
   // Handle text selection
-  const handleDocumentLoad = useCallback((e) => {
-    // Wait for document to load, then add selection listener
+  const handleDocumentLoad = useCallback(() => {
     const viewerContainer = document.querySelector('.rpv-core__viewer');
     if (!viewerContainer) return;
+
+    if (viewerContainerRef.current && mouseUpHandlerRef.current) {
+      viewerContainerRef.current.removeEventListener('mouseup', mouseUpHandlerRef.current);
+    }
+    viewerContainerRef.current = viewerContainer;
 
     const handleMouseUp = () => {
       const selection = window.getSelection();
@@ -228,6 +236,13 @@ export default function PDFAnnotationViewer({
       // Extract page index from data-testid (format: "core__page-layer-0", "core__page-layer-1", etc.)
       const pageIndexMatch = testId?.match(/core__page-layer-(\d+)/);
       const pageIndex = pageIndexMatch ? parseInt(pageIndexMatch[1]) : 0;
+
+      const signature = `${pageIndex + 1}::${selectedText}`;
+      const now = Date.now();
+      if (lastSelectionRef.current.signature === signature && now - lastSelectionRef.current.at < 1200) {
+        return;
+      }
+      lastSelectionRef.current = { signature, at: now };
 
       // Get page dimensions for relative positioning
       const pageRect = pageElement.getBoundingClientRect();
@@ -275,14 +290,27 @@ export default function PDFAnnotationViewer({
         x: rect.left + rect.width / 2,
         y: rect.top - 10
       });
+
+      if (onTextSelected) {
+        onTextSelected({
+          text: selectedText,
+          pageNumber: pageIndex + 1,
+          position
+        });
+      }
     };
 
+    mouseUpHandlerRef.current = handleMouseUp;
     viewerContainer.addEventListener('mouseup', handleMouseUp);
+  }, [onTextSelected]); // highlightColor removed - using ref instead
 
+  useEffect(() => {
     return () => {
-      viewerContainer.removeEventListener('mouseup', handleMouseUp);
+      if (viewerContainerRef.current && mouseUpHandlerRef.current) {
+        viewerContainerRef.current.removeEventListener('mouseup', mouseUpHandlerRef.current);
+      }
     };
-  }, [onAnnotationCreate]); // highlightColor removed - using ref instead
+  }, []);
 
   // Handle copy text
   const handleCopyText = () => {

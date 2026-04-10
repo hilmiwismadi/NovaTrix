@@ -10,6 +10,11 @@ const useAnnotationStore = create((set, get) => ({
   isLoading: false,
   error: null,
 
+  parseControlIdFromSummary: (summary = '') => {
+    const match = summary.match(/\*\*Control ID:\*\*\s*([A-Za-z0-9\.\-]+)/i);
+    return match ? match[1].trim() : null;
+  },
+
   // Fetch annotations for a document
   fetchAnnotations: async (documentId) => {
     set({ isLoading: true, error: null });
@@ -50,6 +55,46 @@ const useAnnotationStore = create((set, get) => ({
       return { success: true, data: mappedAnnotation };
     } catch (error) {
       const errorMessage = error.response?.data?.message || 'Failed to create annotation';
+      set({ error: errorMessage, isLoading: false });
+      return { success: false, error: errorMessage };
+    }
+  },
+
+  createAnnotationFromRag: async ({ documentId, selectedText, position, pageNumber, summary, rawOutput, elapsedMs }) => {
+    set({ isLoading: true, error: null });
+    try {
+      const controlId = get().parseControlIdFromSummary(summary);
+      const payload = {
+        documentId,
+        content: selectedText,
+        position,
+        pageNumber,
+        color: '#ADD8E6',
+        summary,
+        ragRawOutput: rawOutput || null,
+        ragElapsedMs: elapsedMs || null,
+        ragStatus: 'success',
+        ragControlId: controlId || null,
+        controlIds: controlId ? [controlId] : []
+      };
+
+      const response = await apiClient.post('/annotations', payload);
+      const mappedAnnotation = {
+        ...response.data.annotation,
+        content: response.data.annotation.highlightedText,
+        position: response.data.annotation.positionData,
+        pageNumber: JSON.parse(response.data.annotation.positionData).pageNumber,
+        summary: response.data.annotation.summary || summary
+      };
+
+      set((state) => ({
+        annotations: [mappedAnnotation, ...state.annotations],
+        isLoading: false
+      }));
+
+      return { success: true, data: mappedAnnotation };
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Failed to create RAG annotation';
       set({ error: errorMessage, isLoading: false });
       return { success: false, error: errorMessage };
     }

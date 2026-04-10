@@ -175,6 +175,11 @@ type .env
 ```env
 OLLAMA_API_URL=http://localhost:11434
 OLLAMA_MODEL=saki007ster/CybersecurityRiskAnalyst
+AI_PROVIDER=OLLAMA
+ENABLE_AI_WARMUP=true
+# If using RAG:
+# AI_PROVIDER=RAG
+# RAG_API_URL=http://localhost:8000
 ```
 
 ### Frontend Setup

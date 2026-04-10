@@ -5,7 +5,9 @@ import {
   MessageSquare,
   Shield,
   FileCheck,
-  AlertTriangle
+  AlertTriangle,
+  Bot,
+  Database
 } from 'lucide-react';
 import { useSidebar } from '../../contexts/SidebarContext';
 
@@ -45,6 +47,18 @@ const navItems = [
     label: 'Gap Analysis',
     icon: AlertTriangle,
     description: 'Recommendations'
+  },
+  {
+    path: '/ragtest',
+    label: 'RAG Test',
+    icon: Bot,
+    description: 'Live query debug'
+  },
+  {
+    path: '/ragtest/data',
+    label: 'RAG Test Data',
+    icon: Database,
+    description: 'Query run history'
   }
 ];
 

@@ -3,9 +3,34 @@
 import { PrismaClient } from '@prisma/client';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { generateSlug, generateUniqueSlug } from '../services/slugService.js';
 
 const prisma = new PrismaClient();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const backendRoot = path.resolve(__dirname, '..', '..');
+const uploadsRoot = path.join(backendRoot, 'uploads', 'documents');
+
+const toSystemPath = (inputPath = '') => inputPath.replace(/\//g, path.sep);
+
+const resolveDocumentPath = (storedPath = '') => {
+  const normalizedPath = toSystemPath(storedPath);
+
+  // 1) Direct absolute/relative resolution
+  const directPath = path.isAbsolute(normalizedPath)
+    ? normalizedPath
+    : path.join(backendRoot, normalizedPath);
+  if (fs.existsSync(directPath)) return directPath;
+
+  // 2) Legacy absolute paths from previous workspace location
+  //    e.g. D:/.../skripsi/NovaTrix/backend/uploads/documents/file.pdf
+  const filename = path.basename(normalizedPath);
+  const fallbackByName = path.join(uploadsRoot, filename);
+  if (filename && fs.existsSync(fallbackByName)) return fallbackByName;
+
+  return directPath;
+};
 
 /**
  * GET /api/documents
@@ -143,7 +168,8 @@ export const uploadDocument = async (req, res) => {
     });
 
     // Get file info
-    const filePath = req.file.path.replace(/\\/g, '/'); // Normalize path
+    const absoluteFilePath = req.file.path;
+    const filePath = path.relative(backendRoot, absoluteFilePath).replace(/\\/g, '/');
     const fileSize = (req.file.size / (1024 * 1024)).toFixed(2) + ' MB';
 
     // Create document
@@ -269,8 +295,9 @@ export const deleteDocument = async (req, res) => {
     }
 
     // Delete file from filesystem
-    if (fs.existsSync(document.filePath)) {
-      fs.unlinkSync(document.filePath);
+    const resolvedPath = resolveDocumentPath(document.filePath);
+    if (fs.existsSync(resolvedPath)) {
+      fs.unlinkSync(resolvedPath);
     }
 
     // Delete from database (cascade will delete annotations)
@@ -333,7 +360,9 @@ export const servePDF = async (req, res) => {
       });
     }
 
-    if (!fs.existsSync(document.filePath)) {
+    const resolvedPath = resolveDocumentPath(document.filePath);
+
+    if (!fs.existsSync(resolvedPath)) {
       return res.status(404).json({
         error: 'Not found',
         message: 'PDF file not found on server'
@@ -345,7 +374,7 @@ export const servePDF = async (req, res) => {
     res.setHeader('Content-Disposition', `inline; filename="${document.title}.pdf"`);
 
     // Stream file
-    const fileStream = fs.createReadStream(document.filePath);
+    const fileStream = fs.createReadStream(resolvedPath);
     fileStream.pipe(res);
 
   } catch (error) {

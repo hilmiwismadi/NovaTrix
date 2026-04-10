@@ -9,6 +9,8 @@ import ControlNavigator from './pages/ControlNavigator';
 import SOATable from './pages/SOATable';
 import SOAGenerator from './pages/SOAGenerator';
 import GapAnalysis from './pages/GapAnalysis';
+import RagTest from './pages/RagTest';
+import RagTestData from './pages/RagTestData';
 import PrivateRoute from './components/common/PrivateRoute';
 
 function App() {
@@ -35,6 +37,8 @@ function App() {
           <Route path="controls-new" element={<SOATable />} />
           <Route path="soa" element={<SOAGenerator />} />
           <Route path="gaps" element={<GapAnalysis />} />
+          <Route path="ragtest" element={<RagTest />} />
+          <Route path="ragtest/data" element={<RagTestData />} />
         </Route>
 
         {/* Catch all - redirect to home */}

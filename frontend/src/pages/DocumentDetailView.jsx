@@ -8,9 +8,11 @@ import Button from '../components/common/Button';
 import Badge from '../components/common/Badge';
 import PDFAnnotationViewer from '../components/pdf/PDFAnnotationViewer';
 import AnnotationPanel from '../components/pdf/AnnotationPanel';
+import DocumentRAGSidebar from '../components/documents/DocumentRAGSidebar';
 import useDocumentStore from '../stores/documentStore';
 import useAnnotationStore from '../stores/annotationStore';
 import useControlsStore from '../stores/controlsStore';
+import apiClient from '../api/client';
 
 export default function DocumentDetailView() {
   const { slug } = useParams();
@@ -22,6 +24,8 @@ export default function DocumentDetailView() {
   const [summaryText, setSummaryText] = useState('');
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleText, setTitleText] = useState('');
+  const [isRagOpen, setIsRagOpen] = useState(false);
+  const [ragJobs, setRagJobs] = useState([]);
 
   // Stores
   const { currentDocument, isLoading: docLoading, fetchDocumentBySlug, getPDFUrl, updateDocument } = useDocumentStore();
@@ -30,6 +34,7 @@ export default function DocumentDetailView() {
     isLoading: annoLoading,
     fetchAnnotations,
     createAnnotation,
+    createAnnotationFromRag,
     deleteAnnotation,
     addControlToAnnotation,
     removeControlFromAnnotation
@@ -109,6 +114,79 @@ export default function DocumentDetailView() {
     if (result.success && selectedAnnotation?.id === annotationId) {
       // Update selected annotation with the latest data
       setSelectedAnnotation(result.data);
+    }
+  };
+
+  const handleTextSelected = async ({ text, pageNumber, position }) => {
+    if (!text || !text.trim()) return;
+
+    if (ragJobs.filter((j) => ['indexing', 'generating', 'saving'].includes(j.state)).length >= 10) {
+      return;
+    }
+
+    const jobId = `rag-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+    const startedAt = Date.now();
+
+    setIsRagOpen(true);
+    setRagJobs((prev) => [
+      {
+        id: jobId,
+        text,
+        pageNumber,
+        position,
+        startedAt,
+        elapsedMs: 0,
+        state: 'indexing',
+        response: '',
+        error: ''
+      },
+      ...prev
+    ]);
+
+    try {
+      setRagJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, state: 'generating' } : j)));
+      const response = await apiClient.post('/ragtest', {
+        query: text,
+        documentSlug: slug,
+        provider: 'API'
+      });
+
+      if (response.data.status !== 'success') {
+        throw new Error(response.data.error || 'RAG processing failed');
+      }
+
+      const ragMessage = response.data.output || '';
+      const elapsedMs = response.data.processingTimeMs || (Date.now() - startedAt);
+      setRagJobs((prev) => prev.map((j) => (
+        j.id === jobId ? { ...j, response: ragMessage, elapsedMs, state: 'saving' } : j
+      )));
+
+      const ragAnnotationResult = await createAnnotationFromRag({
+        documentId: currentDocument.id,
+        selectedText: text,
+        position,
+        pageNumber,
+        summary: ragMessage,
+        rawOutput: ragMessage,
+        elapsedMs
+      });
+
+      if (ragAnnotationResult.success && ragAnnotationResult.data) {
+        setSelectedAnnotation(ragAnnotationResult.data);
+        setRagJobs((prev) => prev.map((j) => (
+          j.id === jobId ? { ...j, state: 'done', elapsedMs } : j
+        )));
+      } else {
+        setRagJobs((prev) => prev.map((j) => (
+          j.id === jobId ? { ...j, state: 'error', elapsedMs, error: ragAnnotationResult.error || 'Failed to save annotation' } : j
+        )));
+      }
+    } catch (error) {
+      setRagJobs((prev) => prev.map((j) => (
+        j.id === jobId
+          ? { ...j, state: 'error', elapsedMs: Date.now() - startedAt, error: error.response?.data?.message || error.message || 'Failed to process RAG query' }
+          : j
+      )));
     }
   };
 
@@ -356,12 +434,19 @@ export default function DocumentDetailView() {
               selectedAnnotation={selectedAnnotation}
               onAnnotationCreate={handleAnnotationCreate}
               onAnnotationSelect={setSelectedAnnotation}
+              onTextSelected={handleTextSelected}
             />
           ) : (
             <div className="flex items-center justify-center h-full">
               <Loader2 className="animate-spin text-cyan-600" size={48} />
             </div>
           )}
+
+          <DocumentRAGSidebar
+            isOpen={isRagOpen}
+            onClose={() => setIsRagOpen(false)}
+            jobs={ragJobs}
+          />
         </div>
 
         {/* Annotation Panel */}

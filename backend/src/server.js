@@ -12,8 +12,9 @@ import interviewsRoutes from './routes/interviews.routes.js';
 import activitiesRoutes from './routes/activities.routes.js';
 import soaRoutes from './routes/soa.routes.js';
 import aiRoutes from './routes/ai.routes.js';
+import ragTestRoutes from './routes/ragtest.routes.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
-import { warmupModel } from './services/ollamaService.js';
+import { warmupModel, shouldWarmupModel } from './services/ollamaService.js';
 
 // Load environment variables
 dotenv.config();
@@ -67,6 +68,7 @@ app.use('/api/interviews', interviewsRoutes);
 app.use('/api/activities', activitiesRoutes);
 app.use('/api/soa', soaRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/ragtest', ragTestRoutes);
 
 // 404 handler
 app.use(notFoundHandler);
@@ -81,12 +83,16 @@ app.listen(PORT, async () => {
   console.log(`🌐 CORS enabled for: http://localhost:5173-5183`);
   console.log(`\n✅ Server ready to accept requests`);
 
-  // Warm up Ollama model (optional, runs in background)
-  setTimeout(() => {
-    warmupModel().catch(err => {
-      console.log('ℹ️  Ollama warmup skipped - will load on first request');
-    });
-  }, 2000); // Wait 2 seconds after server starts
+  // Warm up Ollama model only when enabled and provider is OLLAMA
+  if (shouldWarmupModel()) {
+    setTimeout(() => {
+      warmupModel().catch(() => {
+        console.log('ℹ️  Ollama warmup skipped - will load on first request');
+      });
+    }, 2000); // Wait 2 seconds after server starts
+  } else {
+    console.log('ℹ️  AI warmup disabled (ENABLE_AI_WARMUP=false or AI_PROVIDER!=OLLAMA)');
+  }
 });
 
 export default app;

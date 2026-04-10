@@ -63,7 +63,12 @@ export const createAnnotation = async (req, res) => {
       position,
       color,
       pageNumber,
-      controlIds = []
+      controlIds = [],
+      summary,
+      ragRawOutput,
+      ragElapsedMs,
+      ragStatus,
+      ragControlId
     } = req.body;
 
     // Validate required fields
@@ -86,6 +91,14 @@ export const createAnnotation = async (req, res) => {
       });
     }
 
+    // Keep only valid control IDs so random/invalid AI output doesn't break saving.
+    const validControlIds = controlIds.length
+      ? (await prisma.annexAControl.findMany({
+          where: { id: { in: controlIds } },
+          select: { id: true }
+        })).map((c) => c.id)
+      : [];
+
     // Create annotation with control links
     // Map frontend field names to schema field names
     const annotation = await prisma.annotation.create({
@@ -94,9 +107,15 @@ export const createAnnotation = async (req, res) => {
         highlightedText: content, // Schema field name
         positionData: typeof position === 'string' ? position : JSON.stringify(position), // Schema field name
         color: color || '#FFFF00',
+        annotationText: summary || null,
+        summary: summary || null,
+        ragRawOutput: ragRawOutput || null,
+        ragElapsedMs: ragElapsedMs ? parseInt(ragElapsedMs) : null,
+        ragStatus: ragStatus || null,
+        ragControlId: ragControlId || null,
         createdById: req.user?.id || null,
         annotationControls: {
-          create: controlIds.map(controlId => ({
+          create: validControlIds.map(controlId => ({
             controlId: controlId // controlId is a string like "A.5.1"
           }))
         }
@@ -111,11 +130,11 @@ export const createAnnotation = async (req, res) => {
     });
 
     // Create activity log
-    const controlsList = controlIds.length > 0
-      ? controlIds.join(', ')
+    const controlsList = validControlIds.length > 0
+      ? validControlIds.join(', ')
       : 'no controls';
 
-    const description = controlIds.length > 0
+    const description = validControlIds.length > 0
       ? `Added annotation to ${document.title} tagged with ${controlsList}`
       : `Added annotation to ${document.title}`;
 
@@ -127,12 +146,12 @@ export const createAnnotation = async (req, res) => {
         entityId: annotation.id,
         description: description,
         metadata: JSON.stringify({
-          documentId: document.id,
-          documentTitle: document.title,
-          controlIds: controlIds,
-          pageNumber: pageNumber
-        })
-      }
+            documentId: document.id,
+            documentTitle: document.title,
+            controlIds: validControlIds,
+            pageNumber: pageNumber
+          })
+        }
     });
 
     res.status(201).json({
