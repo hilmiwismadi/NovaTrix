@@ -5,6 +5,17 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+const parseJsonObject = (value) => {
+  if (!value) return null;
+  if (typeof value === 'object') return value;
+  try {
+    const parsed = JSON.parse(String(value));
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
 /**
  * GET /api/annotations/document/:documentId
  * Get all annotations for a document
@@ -30,12 +41,20 @@ export const getAnnotationsByDocument = async (req, res) => {
     });
 
     // Map schema field names to frontend field names
-    const mappedAnnotations = annotations.map(ann => ({
-      ...ann,
-      content: ann.highlightedText, // Map to frontend field name
-      position: ann.positionData,   // Map to frontend field name
-      pageNumber: JSON.parse(ann.positionData).pageNumber // Extract from position data
-    }));
+    const mappedAnnotations = annotations.map((ann) => {
+      const ragRawObject = parseJsonObject(ann.ragRawOutput);
+      const parsedSummary = ragRawObject?.parsedSummary && typeof ragRawObject.parsedSummary === 'object'
+        ? ragRawObject.parsedSummary
+        : null;
+
+      return {
+        ...ann,
+        content: ann.highlightedText,
+        position: ann.positionData,
+        pageNumber: JSON.parse(ann.positionData).pageNumber,
+        parsedSummary
+      };
+    });
 
     res.json({
       annotations: mappedAnnotations,
@@ -65,6 +84,7 @@ export const createAnnotation = async (req, res) => {
       pageNumber,
       controlIds = [],
       summary,
+      ragParsedSummary,
       ragRawOutput,
       ragElapsedMs,
       ragStatus,
@@ -99,6 +119,13 @@ export const createAnnotation = async (req, res) => {
         })).map((c) => c.id)
       : [];
 
+    const packedRagRawOutput = ragParsedSummary
+      ? JSON.stringify({
+          parsedSummary: ragParsedSummary,
+          rawOutput: ragRawOutput || null
+        })
+      : (ragRawOutput || null);
+
     // Create annotation with control links
     // Map frontend field names to schema field names
     const annotation = await prisma.annotation.create({
@@ -109,7 +136,7 @@ export const createAnnotation = async (req, res) => {
         color: color || '#FFFF00',
         annotationText: summary || null,
         summary: summary || null,
-        ragRawOutput: ragRawOutput || null,
+        ragRawOutput: packedRagRawOutput,
         ragElapsedMs: ragElapsedMs ? parseInt(ragElapsedMs) : null,
         ragStatus: ragStatus || null,
         ragControlId: ragControlId || null,

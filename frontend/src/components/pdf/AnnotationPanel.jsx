@@ -8,7 +8,29 @@ import Badge from '../common/Badge';
 
 const parseAiSummary = (summary = '') => {
   if (!summary) return null;
+  if (typeof summary === 'object') {
+    return {
+      controlId: summary.controlId || summary.control_id || '',
+      applicable: summary.applicable || '',
+      implementationStatus: summary.implementationStatus || summary.implementation_status || '',
+      justification: summary.justification || '',
+      recommendation: summary.recommendation || '',
+      retrievedControls: Array.isArray(summary.retrievedControls)
+        ? summary.retrievedControls.map((item) => `${item.id} (score: ${Number(item.score || 0).toFixed(4)})`)
+        : Array.isArray(summary.retrieved_controls)
+          ? summary.retrieved_controls.map((item) => `${item.id} (score: ${Number(item.score || 0).toFixed(4)})`)
+          : []
+    };
+  }
   const text = String(summary);
+  try {
+    const directJson = JSON.parse(text);
+    if (directJson && typeof directJson === 'object') {
+      return parseAiSummary(directJson);
+    }
+  } catch {
+    // continue with markdown parsing
+  }
   const read = (label) => {
     const pattern = new RegExp(`\\*\\*${label}\\*\\*:?\\s*([\\s\\S]*?)(?=\\n\\*\\*|$)`, 'i');
     return text.match(pattern)?.[1]?.trim() || '';
@@ -77,7 +99,9 @@ export default function AnnotationPanel({
 
   // Get controls already linked to selected annotation
   const linkedControlIds = selectedAnnotation?.annotationControls?.map(ac => ac.control.id) || [];
-  const parsedSummary = parseAiSummary(selectedAnnotation?.summary || '');
+  const parsedSummary = parseAiSummary(selectedAnnotation?.parsedSummary || selectedAnnotation?.summary || '');
+  const autoDetectedControlId = parsedSummary?.controlId || '';
+  const retrievedControlRows = parsedSummary?.retrievedControls || [];
 
   const handleControlToggle = (controlId) => {
     if (linkedControlIds.includes(controlId)) {
@@ -374,13 +398,13 @@ export default function AnnotationPanel({
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-40"
+            className="fixed inset-0 bg-slate-900/30 z-40 backdrop-blur-[1px]"
             onClick={() => setShowDetailsModal(false)}
           />
 
           {/* Modal */}
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-            <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl flex flex-col pointer-events-auto">
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl max-h-[86vh] flex flex-col pointer-events-auto">
               {/* Header */}
               <div className="p-4 border-b border-gray-200 flex items-center justify-between">
                 <h3 className="text-lg font-bold text-gray-900">Annotation Details</h3>
@@ -393,67 +417,47 @@ export default function AnnotationPanel({
               </div>
 
               {/* Content */}
-              <div className="p-4 space-y-4">
-                {/* Compliance Status */}
-                <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase">Compliance Status</label>
-                  <div className="mt-1 flex items-center gap-2">
-                    <div
-                      className="w-6 h-6 rounded border border-gray-300"
-                      style={{ backgroundColor: selectedAnnotation.color }}
-                    />
-                    <span className="text-sm text-gray-700">
-                      {selectedAnnotation.color === '#90EE90' && 'Compliant / Implemented'}
-                      {selectedAnnotation.color === '#FFFF00' && 'Needs Review / To Be Verified'}
-                      {selectedAnnotation.color === '#ADD8E6' && 'Reference / Informational'}
-                      {selectedAnnotation.color === '#FFB6C1' && 'Gap / Non-Compliant'}
-                      {selectedAnnotation.color === '#FFD580' && 'Partially Compliant / In Progress'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Page Number */}
-                <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase">Page</label>
-                  <p className="text-sm text-gray-900 mt-1">Page {selectedAnnotation.pageNumber}</p>
-                </div>
-
-                {/* Highlighted Text */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-semibold text-gray-500 uppercase">Highlighted Text</label>
+              <div className="p-4 flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 overflow-hidden min-h-0">
+                {/* LEFT: Source + Evidence */}
+                <div className="space-y-4 overflow-y-auto pr-1">
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase">Source Text / Evidence</label>
+                    <div className="mt-2 p-3 bg-gray-50 rounded border border-gray-200 h-48 overflow-y-auto">
+                      <p className="text-sm text-gray-900 whitespace-pre-wrap">{selectedAnnotation.content}</p>
+                    </div>
                     <button
                       onClick={() => handleCopyText(selectedAnnotation.content, selectedAnnotation.id)}
-                      className={`flex items-center gap-1 text-xs transition-colors ${
-                        copiedId === selectedAnnotation.id
-                          ? 'text-green-600'
-                          : 'text-cyan-600 hover:text-cyan-700'
+                      className={`mt-2 inline-flex items-center gap-1 text-xs transition-colors ${
+                        copiedId === selectedAnnotation.id ? 'text-green-600' : 'text-cyan-600 hover:text-cyan-700'
                       }`}
                     >
-                      {copiedId === selectedAnnotation.id ? (
-                        <>
-                          <Check size={14} />
-                          Copied!
-                        </>
-                      ) : (
-                        <>
-                          <Copy size={14} />
-                          Copy
-                        </>
-                      )}
+                      {copiedId === selectedAnnotation.id ? <Check size={14} /> : <Copy size={14} />}
+                      {copiedId === selectedAnnotation.id ? 'Copied!' : 'Copy Text'}
                     </button>
                   </div>
-                  <p className="text-sm text-gray-900 mt-1 p-3 bg-gray-50 rounded border border-gray-200 max-h-32 overflow-y-auto">
-                    {selectedAnnotation.content}
-                  </p>
+
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase">Retrieved Controls</label>
+                    <div className="mt-2 p-3 bg-white rounded border border-gray-200 h-56 overflow-y-auto space-y-2">
+                      {retrievedControlRows.length > 0 ? (
+                        retrievedControlRows.map((row, idx) => (
+                          <div key={`${row}-${idx}`} className="text-sm text-gray-900 bg-cyan-50 border border-cyan-100 rounded p-2">
+                            {row}
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-sm text-gray-500">No retrieved controls.</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
-                {/* AI Summary */}
-                <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase">AI Summary</label>
-                  <div className="mt-1 p-3 bg-gradient-to-r from-cyan-50 to-blue-50 rounded border border-cyan-200">
+                {/* RIGHT: Structured AI Summary */}
+                <div className="space-y-4 overflow-y-auto pr-1">
+                  <div className="p-3 bg-gradient-to-r from-cyan-50 to-blue-50 rounded border border-cyan-200">
+                    <label className="text-xs font-semibold text-gray-500 uppercase">AI Summary</label>
                     {selectedAnnotation.summary && parsedSummary ? (
-                      <div className="space-y-3">
+                      <div className="space-y-3 mt-2">
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                           <div className="bg-white border border-cyan-100 rounded p-2">
                             <p className="text-[10px] text-gray-500 uppercase">Control ID</p>
@@ -464,7 +468,7 @@ export default function AnnotationPanel({
                             <p className="text-sm font-semibold text-gray-900">{parsedSummary.applicable || '-'}</p>
                           </div>
                           <div className="bg-white border border-cyan-100 rounded p-2">
-                            <p className="text-[10px] text-gray-500 uppercase">Implementation</p>
+                            <p className="text-[10px] text-gray-500 uppercase">Implementation Status</p>
                             <p className="text-sm font-semibold text-gray-900">{parsedSummary.implementationStatus || '-'}</p>
                           </div>
                         </div>
@@ -476,55 +480,20 @@ export default function AnnotationPanel({
                           <p className="text-[10px] text-gray-500 uppercase mb-1">Recommendation</p>
                           <p className="text-sm text-gray-900 whitespace-pre-wrap">{parsedSummary.recommendation || '-'}</p>
                         </div>
-                        <div className="bg-white border border-cyan-100 rounded p-2">
-                          <p className="text-[10px] text-gray-500 uppercase mb-1">Retrieved Controls</p>
-                          {parsedSummary.retrievedControls.length > 0 ? (
-                            <ul className="space-y-1">
-                              {parsedSummary.retrievedControls.map((item, idx) => (
-                                <li key={`${item}-${idx}`} className="text-sm text-gray-900">{item}</li>
-                              ))}
-                            </ul>
-                          ) : (
-                            <p className="text-sm text-gray-600">-</p>
-                          )}
-                        </div>
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-500 italic">
-                        AI-generated summary will appear here
-                      </p>
+                      <p className="text-sm text-gray-500 italic mt-2">AI-generated summary will appear here</p>
                     )}
                   </div>
-                </div>
 
-                {/* Tagged Controls */}
-                <div>
-                  <label className="text-xs font-semibold text-gray-500 uppercase">
-                    Tagged Controls ({selectedAnnotation.annotationControls?.length || 0})
-                  </label>
-                  {selectedAnnotation.annotationControls && selectedAnnotation.annotationControls.length > 0 ? (
+                  <div className="p-3 bg-white rounded border border-gray-200">
+                    <label className="text-xs font-semibold text-gray-500 uppercase">Tag Sync Status</label>
                     <div className="mt-2 space-y-2">
-                      {selectedAnnotation.annotationControls.map((ac) => (
-                        <div key={ac.id} className="p-2 bg-cyan-50 rounded border border-cyan-200">
-                          <p className="text-sm font-semibold text-cyan-900">{ac.control.id}</p>
-                          <p className="text-xs text-cyan-700">{ac.control.title}</p>
-                        </div>
-                      ))}
+                      <p className="text-sm text-gray-700">Auto-detected Control: <span className="font-semibold">{autoDetectedControlId || '-'}</span></p>
+                      <p className="text-sm text-gray-700">Tagged Controls: {selectedAnnotation.annotationControls?.length || 0}</p>
                     </div>
-                  ) : (
-                    <p className="text-sm text-gray-500 mt-1">No controls tagged yet</p>
-                  )}
-                </div>
-
-                {/* Timestamp */}
-                {selectedAnnotation.createdAt && (
-                  <div>
-                    <label className="text-xs font-semibold text-gray-500 uppercase">Created</label>
-                    <p className="text-sm text-gray-900 mt-1">
-                      {new Date(selectedAnnotation.createdAt).toLocaleString()}
-                    </p>
                   </div>
-                )}
+                </div>
               </div>
 
               {/* Footer */}

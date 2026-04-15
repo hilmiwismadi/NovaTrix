@@ -43,7 +43,7 @@ export const runRagTest = async (req, res) => {
         status: result.success ? 'success' : 'failed',
         errorMessage: result.success ? null : result.error,
         detailedLog: result.rawOutput || (result.success ? 'Completed without raw logs.' : 'No detailed log returned by provider.'),
-        provider: result.provider || (provider?.toUpperCase() || 'LOCAL')
+        provider: result.model || result.provider || (provider?.toUpperCase() || 'LOCAL')
       }
     });
 
@@ -54,7 +54,9 @@ export const runRagTest = async (req, res) => {
       processingTimeMs: updated.processingTimeMs,
       error: updated.errorMessage,
       detailedLog: updated.detailedLog,
-      provider: updated.provider
+      provider: updated.provider,
+      model: result.model || null,
+      parsedSummary: result.parsedResult || null
     });
   } catch (error) {
     console.error('runRagTest error:', error);

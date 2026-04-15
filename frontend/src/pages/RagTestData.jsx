@@ -7,6 +7,7 @@ export default function RagTestData() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [expandedCells, setExpandedCells] = useState(new Set());
+  const [copiedLogId, setCopiedLogId] = useState(null);
 
   const toggleCellExpansion = (rowId, field) => {
     const key = `${rowId}-${field}`;
@@ -19,6 +20,12 @@ export default function RagTestData() {
   };
 
   const isCellExpanded = (rowId, field) => expandedCells.has(`${rowId}-${field}`);
+
+  const copyLog = async (rowId, log) => {
+    await navigator.clipboard.writeText(log || '');
+    setCopiedLogId(rowId);
+    setTimeout(() => setCopiedLogId(null), 1500);
+  };
 
   useEffect(() => {
     const load = async () => {
@@ -48,11 +55,20 @@ export default function RagTestData() {
           <div className="p-6 text-sm text-red-600">{error}</div>
         ) : (
           <div className="overflow-auto">
-            <table className="min-w-full text-sm">
+            <table className="w-full min-w-[1200px] table-fixed text-sm">
+              <colgroup>
+                <col className="w-[140px]" />
+                <col className="w-[150px]" />
+                <col className="w-[90px]" />
+                <col className="w-[90px]" />
+                <col className="w-[320px]" />
+                <col className="w-[380px]" />
+                <col className="w-[220px]" />
+              </colgroup>
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   <th className="text-left p-3">Time</th>
-                  <th className="text-left p-3">Provider</th>
+                  <th className="text-left p-3">Provider API</th>
                   <th className="text-left p-3">Status</th>
                   <th className="text-left p-3">Duration</th>
                   <th className="text-left p-3">Query</th>
@@ -63,11 +79,14 @@ export default function RagTestData() {
               <tbody>
                 {rows.map((r) => (
                   <tr key={r.id} className="border-b border-gray-100 align-top">
-                    <td className="p-3 whitespace-nowrap">{new Date(r.createdAt).toLocaleString()}</td>
-                    <td className="p-3 whitespace-nowrap">{r.provider || '-'}</td>
-                    <td className="p-3">{r.status}</td>
-                    <td className="p-3 whitespace-nowrap">{r.processingTimeMs ? `${Math.round(r.processingTimeMs / 1000)}s` : '-'}</td>
-                    <td className="p-3 max-w-[420px]">
+                    <td className="p-3">
+                      <div className="text-xs text-gray-800 leading-tight">{new Date(r.createdAt).toLocaleDateString()}</div>
+                      <div className="text-[11px] text-gray-500 leading-tight mt-1">{new Date(r.createdAt).toLocaleTimeString()}</div>
+                    </td>
+                    <td className="p-3 text-xs whitespace-nowrap">{r.provider || '-'}</td>
+                    <td className="p-3 text-xs whitespace-nowrap">{r.status}</td>
+                    <td className="p-3 text-xs whitespace-nowrap">{r.processingTimeMs ? `${Math.round(r.processingTimeMs / 1000)}s` : '-'}</td>
+                    <td className="p-3">
                       <div className="relative">
                         <div
                           className={`whitespace-pre-wrap text-sm text-gray-700 ${!isCellExpanded(r.id, 'query') ? 'line-clamp-5' : ''}`}
@@ -90,7 +109,7 @@ export default function RagTestData() {
                         )}
                       </div>
                     </td>
-                    <td className="p-3 max-w-[520px]">
+                    <td className="p-3">
                       <div className="relative">
                         <div
                           className={`whitespace-pre-wrap text-sm text-gray-700 ${!isCellExpanded(r.id, 'output') ? 'line-clamp-6' : ''}`}
@@ -113,27 +132,17 @@ export default function RagTestData() {
                         )}
                       </div>
                     </td>
-                    <td className="p-3 max-w-[520px]">
-                      <div className="relative">
-                        <pre
-                          className={`text-xs whitespace-pre-wrap bg-gray-50 border border-gray-200 rounded p-2 ${!isCellExpanded(r.id, 'log') ? 'line-clamp-6' : ''}`}
-                        >
+                    <td className="p-3">
+                      <div className="space-y-2">
+                        <pre className="text-xs whitespace-pre-wrap bg-gray-50 border border-gray-200 rounded p-2 max-h-28 overflow-hidden">
                           {r.detailedLog || '-'}
                         </pre>
-                        {r.detailedLog && r.detailedLog.length > 260 && !isCellExpanded(r.id, 'log') && (
-                          <div className="absolute bottom-0 right-0 left-0 h-10 bg-gradient-to-t from-white to-transparent pointer-events-none" />
-                        )}
-                        {r.detailedLog && r.detailedLog.length > 260 && (
-                          <button
-                            onClick={() => toggleCellExpansion(r.id, 'log')}
-                            className={`group inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-cyan-600 bg-white/95 backdrop-blur-sm hover:bg-cyan-100 border border-cyan-200 hover:border-cyan-300 rounded-md transition-all duration-300 hover:shadow-lg hover:scale-105 active:scale-95 z-10 ${
-                              !isCellExpanded(r.id, 'log') ? 'absolute bottom-1 right-1' : 'mt-2'
-                            }`}
-                          >
-                            <span>{isCellExpanded(r.id, 'log') ? '▲' : '▼'}</span>
-                            {isCellExpanded(r.id, 'log') ? 'Read Less' : 'Read More'}
-                          </button>
-                        )}
+                        <button
+                          onClick={() => copyLog(r.id, r.detailedLog || '')}
+                          className="text-xs px-2 py-1 rounded border border-cyan-300 text-cyan-700 hover:bg-cyan-50"
+                        >
+                          {copiedLogId === r.id ? 'Copied' : 'Copy Log'}
+                        </button>
                       </div>
                     </td>
                   </tr>

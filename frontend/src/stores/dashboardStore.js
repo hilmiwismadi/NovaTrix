@@ -123,7 +123,7 @@ const useDashboardStore = create((set, get) => ({
 
   // Fetch all dashboard data in parallel
   fetchAllDashboardData: async () => {
-    set((state) => ({
+    set({
       isLoading: {
         documents: true,
         interviews: true,
@@ -137,7 +137,7 @@ const useDashboardStore = create((set, get) => ({
         controls: null,
         activities: null
       }
-    }));
+    });
 
     try {
       // Execute all API calls in parallel

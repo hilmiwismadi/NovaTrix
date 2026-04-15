@@ -79,6 +79,50 @@ const useSOAStore = create((set, get) => ({
     }
   },
 
+  // Sync SOA entry from annotation parsed summary using existing /soa endpoints
+  syncFromAnnotation: async ({ controlId, applicable, implementationStatus, justification, recommendation }) => {
+    try {
+      const mapApplicable = (value) => {
+        const v = String(value || '').toLowerCase();
+        if (v === 'yes' || v === 'applicable') return 'applicable';
+        if (v === 'no' || v === 'not-applicable') return 'not-applicable';
+        return 'not-determined';
+      };
+      const mapImplementationStatus = (value) => {
+        const v = String(value || '').toLowerCase();
+        if (v === 'implemented') return 'implemented';
+        if (v === 'partially implemented' || v === 'partially-implemented') return 'partially-implemented';
+        if (v === 'not implemented' || v === 'not-implemented') return 'not-implemented';
+        return 'planned';
+      };
+
+      const entriesResponse = await apiClient.get('/soa');
+      const targetEntry = (entriesResponse.data.entries || []).find((entry) => entry.controlId === controlId);
+      if (!targetEntry) {
+        return { success: false, error: `SOA entry not found for control ${controlId}` };
+      }
+
+      const updateResponse = await apiClient.put(`/soa/${targetEntry.id}`, {
+        applicability: mapApplicable(applicable),
+        implementationStatus: mapImplementationStatus(implementationStatus),
+        justification: justification || '',
+        implementationMethod: recommendation || ''
+      });
+
+      const { entries } = get();
+      const updatedEntries = entries.map((entry) =>
+        entry.id === targetEntry.id ? { ...entry, ...updateResponse.data.entry } : entry
+      );
+      set({ entries: updatedEntries });
+
+      return { success: true, data: updateResponse.data.entry };
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Failed to sync SOA entry from annotation';
+      set({ error: errorMessage });
+      return { success: false, error: errorMessage };
+    }
+  },
+
   // Clear selected evidence
   clearEvidence: () => set({ selectedEvidence: null }),
 

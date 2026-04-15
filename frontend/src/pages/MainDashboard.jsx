@@ -1,8 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, MessageSquare, Shield, TrendingUp, Loader2 } from 'lucide-react';
+import { FileText, Shield, Bot, Activity, Loader2 } from 'lucide-react';
 import SummaryCard from '../components/dashboard/SummaryCard';
-import ComplianceChart from '../components/dashboard/ComplianceChart';
 import QuickActions from '../components/dashboard/QuickActions';
 import ActivityTimeline from '../components/dashboard/ActivityTimeline';
 import useDashboardStore from '../stores/dashboardStore';
@@ -11,7 +10,6 @@ export default function MainDashboard() {
   const navigate = useNavigate();
   const {
     documentStats,
-    interviewStats,
     controlStats,
     activities,
     isLoading,
@@ -37,7 +35,7 @@ export default function MainDashboard() {
   }
 
   // Error state (if all failed)
-  const hasData = documentStats || interviewStats || controlStats || activities.length > 0;
+  const hasData = documentStats || controlStats || activities.length > 0;
   if (!hasData && (errors.documents || errors.interviews || errors.controls || errors.activities)) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -64,7 +62,7 @@ export default function MainDashboard() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <SummaryCard
           title="Documents Uploaded"
           value={documentStats?.total || 0}
@@ -74,39 +72,48 @@ export default function MainDashboard() {
           onClick={() => navigate('/documents')}
         />
         <SummaryCard
-          title="Interviews Added"
-          value={interviewStats?.total || 0}
-          icon={MessageSquare}
-          trend={interviewStats?.thisWeek ? `+${interviewStats.thisWeek} this week` : undefined}
-          iconColor="text-cyan"
-          onClick={() => navigate('/interviews')}
-        />
-        <SummaryCard
           title="Controls Analyzed"
-          value={controlStats?.total || 0}
+          value={controlStats?.analyzedControls || 0}
           icon={Shield}
           iconColor="text-cyan"
-          onClick={() => navigate('/controls')}
+          trend={`${controlStats?.total || 0} total`}
+          onClick={() => navigate('/controls-new')}
         />
         <SummaryCard
-          title="Compliance Score"
-          value={`${controlStats?.averageScore || 0}%`}
-          icon={TrendingUp}
-          trend="+3% improvement"
-          iconColor="text-green-500"
-          onClick={() => navigate('/gaps')}
+          title="System Activity"
+          value={activities.length}
+          icon={Activity}
+          iconColor="text-cyan"
+          trend="Latest events"
         />
       </div>
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Compliance Chart - Takes 2 columns */}
+        {/* RAG + Control Analysis Summary */}
         <div className="lg:col-span-2">
-          <ComplianceChart
-            compliant={controlStats?.compliant || 0}
-            partial={controlStats?.partial || 0}
-            nonCompliant={controlStats?.nonCompliant || 0}
-          />
+          <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <Bot size={18} className="text-cyan-600" />
+              <h3 className="text-lg font-semibold text-gray-900">RAG & Analysis Overview</h3>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                <p className="text-xs text-gray-500 uppercase">Analyzed Controls</p>
+                <p className="text-2xl font-bold text-gray-900">{controlStats?.analyzedControls || 0}</p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                <p className="text-xs text-gray-500 uppercase">Pending Analysis</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {Math.max((controlStats?.total || 0) - (controlStats?.analyzedControls || 0), 0)}
+                </p>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                <p className="text-xs text-gray-500 uppercase">RAG Runs Logged</p>
+                <p className="text-2xl font-bold text-gray-900">{activities.filter((a) => a.type === 'document').length}</p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Quick Actions */}

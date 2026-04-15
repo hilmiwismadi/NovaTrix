@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Card from '../components/common/Card';
 import apiClient from '../api/client';
 
@@ -10,11 +10,24 @@ export default function RagTest() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [provider, setProvider] = useState('API');
-  const [model, setModel] = useState('qwen/qwen3-14b:free');
+  const [model, setModel] = useState('google/gemma-3-12b-it:free');
+  const [startedAt, setStartedAt] = useState(null);
+  const [liveElapsed, setLiveElapsed] = useState(0);
+
+  useEffect(() => {
+    if (!isLoading || !startedAt) return undefined;
+    const timerId = setInterval(() => {
+      setLiveElapsed(Date.now() - startedAt);
+    }, 200);
+    return () => clearInterval(timerId);
+  }, [isLoading, startedAt]);
 
   const runTest = async () => {
     if (!query.trim()) return;
+    const started = Date.now();
     setIsLoading(true);
+    setStartedAt(started);
+    setLiveElapsed(0);
     setError('');
     setResult('');
     setElapsed(null);
@@ -23,14 +36,18 @@ export default function RagTest() {
     try {
       const response = await apiClient.post('/ragtest', { query, provider, model });
       setResult(response.data.output || '');
-      setElapsed(response.data.processingTimeMs || 0);
+      const finishedElapsed = response.data.processingTimeMs || (Date.now() - started);
+      setElapsed(finishedElapsed);
+      setLiveElapsed(finishedElapsed);
       setLog(response.data.detailedLog || 'No detailed log returned.');
       if (response.data.error) setError(response.data.error);
     } catch (err) {
+      setLiveElapsed(Date.now() - started);
       setError(err.response?.data?.message || 'Failed to run rag test');
       setLog(err.response?.data ? JSON.stringify(err.response.data, null, 2) : '');
     } finally {
       setIsLoading(false);
+      setStartedAt(null);
     }
   };
 
@@ -61,7 +78,7 @@ export default function RagTest() {
               value={model}
               onChange={(e) => setModel(e.target.value)}
               className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-              placeholder="qwen/qwen3-14b:free"
+              placeholder="google/gemma-3-12b-it:free"
             />
           </div>
         </div>
@@ -88,7 +105,13 @@ export default function RagTest() {
         <Card className="p-5">
           <h2 className="text-sm font-semibold text-gray-700 mb-2">Runtime</h2>
           <p className="text-sm text-gray-800">Provider: {provider}</p>
-          <p className="text-sm text-gray-800">Elapsed: {elapsed !== null ? `${Math.round(elapsed / 1000)}s (${elapsed} ms)` : '-'}</p>
+          <p className="text-sm text-gray-800">
+            Elapsed: {isLoading
+              ? `${Math.round(liveElapsed / 1000)}s (${liveElapsed} ms)`
+              : elapsed !== null
+                ? `${Math.round(elapsed / 1000)}s (${elapsed} ms)`
+                : '-'}
+          </p>
           {error && <p className="text-sm text-red-600 mt-2">Error: {error}</p>}
         </Card>
       </div>

@@ -8,12 +8,12 @@ const getRagTimeout = () => Number(process.env.RAG_TIMEOUT_MS || 120000);
 const getRagPythonCmd = () => process.env.RAG_PYTHON_CMD || 'python';
 const getRagDefaultProvider = () => (process.env.RAG_DEFAULT_PROVIDER || 'LOCAL').toUpperCase();
 const getOpenRouterApiKey = () => process.env.OPENROUTER_API_KEY || '';
-const getOpenRouterModel = () => process.env.OPENROUTER_MODEL || 'qwen/qwen3-14b:free';
+const getOpenRouterModel = () => process.env.OPENROUTER_MODEL || 'google/gemma-3-12b-it:free';
 const getOpenRouterApiUrl = () => process.env.OPENROUTER_API_URL || 'https://openrouter.ai/api/v1/chat/completions';
 const getOpenRouterReferer = () => process.env.OPENROUTER_REFERER || 'http://localhost:5173';
 const getOpenRouterTitle = () => process.env.OPENROUTER_TITLE || 'NovaTrix RAG';
 const getOpenRouterFallbackModels = () => {
-  const raw = process.env.OPENROUTER_FALLBACK_MODELS || 'qwen/qwen-2.5-72b-instruct:free,meta-llama/llama-3.1-8b-instruct:free,mistralai/mistral-7b-instruct:free';
+  const raw = process.env.OPENROUTER_FALLBACK_MODELS || 'mistralai/mistral-7b-instruct:free,openai/gpt-3.5-turbo,google/gemma-3-4b-it:free';
   return raw.split(',').map((v) => v.trim()).filter(Boolean);
 };
 
@@ -336,6 +336,35 @@ const callOpenRouter = async (model, formatPrompt, openRouterApiKey) => {
   return response;
 };
 
+const buildOpenRouterErrorDetail = (error) => {
+  const status = error?.response?.status || null;
+  const data = error?.response?.data || null;
+  const rawMessage =
+    data?.error?.metadata?.raw ||
+    data?.error?.message ||
+    data?.message ||
+    error?.message ||
+    'Unknown error';
+
+  return {
+    status,
+    isRateLimited: status === 429,
+    rawMessage,
+    detail: data ? JSON.stringify(data) : rawMessage
+  };
+};
+
+const shouldRetryOpenRouterError = (error) => {
+  const { status, rawMessage } = buildOpenRouterErrorDetail(error);
+  const text = String(rawMessage || '').toLowerCase();
+  if ([400, 404, 408, 409, 429, 500, 502, 503, 504].includes(status)) return true;
+  if (text.includes('rate-limit')) return true;
+  if (text.includes('rate limited')) return true;
+  if (text.includes('no endpoints found')) return true;
+  if (text.includes('temporarily unavailable')) return true;
+  return false;
+};
+
 const runOpenRouterRag = async (userMessage, options = {}) => {
   const selectedModel = options.model || getOpenRouterModel();
   const openRouterApiKey = getOpenRouterApiKey();
@@ -385,6 +414,8 @@ Aturan wajib:
   let response = null;
   let lastError = null;
   let usedModel = selectedModel;
+  let seenRateLimit = false;
+  let rateLimitMessage = '';
 
   for (const model of modelsToTry) {
     try {
@@ -393,8 +424,12 @@ Aturan wajib:
       break;
     } catch (error) {
       lastError = error;
-      const status = error?.response?.status;
-      if (status === 404 || status === 400 || status === 429 || status === 503) {
+      const { status, isRateLimited, rawMessage } = buildOpenRouterErrorDetail(error);
+      if (isRateLimited) {
+        seenRateLimit = true;
+        rateLimitMessage = rawMessage;
+      }
+      if (shouldRetryOpenRouterError(error)) {
         continue;
       }
       throw error;
@@ -402,8 +437,17 @@ Aturan wajib:
   }
 
   if (!response) {
-    const status = lastError?.response?.status;
-    const detail = lastError?.response?.data ? JSON.stringify(lastError.response.data) : (lastError?.message || 'Unknown error');
+    const { status, detail } = buildOpenRouterErrorDetail(lastError);
+    if (seenRateLimit) {
+      return {
+        success: false,
+        error: `OpenRouter rate-limited the selected model(s). ${rateLimitMessage || 'Please retry shortly.'}`,
+        code: 'OPENROUTER_RATE_LIMIT',
+        processingTime: Date.now() - startTime,
+        rawOutput: detail
+      };
+    }
+
     return {
       success: false,
       error: `OpenRouter failed for all candidate models. Last status: ${status || 'N/A'}`,

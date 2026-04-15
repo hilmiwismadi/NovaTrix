@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   AlertCircle,
   CheckCircle2,
@@ -20,12 +20,12 @@ const statusMeta = {
   error: { label: 'Failed', icon: AlertCircle, color: 'text-red-600' }
 };
 
-function JobCard({ job, expanded, onToggleExpand }) {
+function JobCard({ job, expanded, onToggleExpand, nowTs }) {
   const meta = statusMeta[job.state] || statusMeta.indexing;
   const Icon = meta.icon;
   const elapsed = job.state === 'done' || job.state === 'error'
     ? Math.round((job.elapsedMs || 0) / 1000)
-    : Math.round((Date.now() - job.startedAt) / 1000);
+    : Math.round(((nowTs || job.startedAt) - job.startedAt) / 1000);
 
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -62,19 +62,10 @@ function JobCard({ job, expanded, onToggleExpand }) {
   );
 }
 
-export default function DocumentRAGSidebar({ isOpen, onClose, jobs = [] }) {
+export default function DocumentRAGSidebar({ isOpen, onClose, jobs = [], nowTs = 0 }) {
   const [isMinimized, setIsMinimized] = useState(false);
   const [expandedIds, setExpandedIds] = useState({});
   const activeCount = useMemo(() => jobs.filter((j) => ['indexing', 'generating', 'saving'].includes(j.state)).length, [jobs]);
-
-  useEffect(() => {
-    const newExpanded = {};
-    jobs.forEach((j) => {
-      if (expandedIds[j.id] !== undefined) newExpanded[j.id] = expandedIds[j.id];
-      else newExpanded[j.id] = j.state !== 'done';
-    });
-    setExpandedIds(newExpanded);
-  }, [jobs.length]);
 
   if (!isOpen) return null;
 
@@ -112,8 +103,9 @@ export default function DocumentRAGSidebar({ isOpen, onClose, jobs = [] }) {
             <JobCard
               key={job.id}
               job={job}
-              expanded={!!expandedIds[job.id]}
-              onToggleExpand={(id) => setExpandedIds((prev) => ({ ...prev, [id]: !prev[id] }))}
+              expanded={expandedIds[job.id] ?? (job.state !== 'done')}
+              onToggleExpand={(id) => setExpandedIds((prev) => ({ ...prev, [id]: !(prev[id] ?? true) }))}
+              nowTs={nowTs}
             />
           ))}
         </div>

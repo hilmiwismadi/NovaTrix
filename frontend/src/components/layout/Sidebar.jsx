@@ -2,10 +2,7 @@ import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard,
   FileText,
-  MessageSquare,
-  Shield,
   FileCheck,
-  AlertTriangle,
   Bot,
   Database
 } from 'lucide-react';
@@ -25,28 +22,10 @@ const navItems = [
     description: 'Document analysis hub'
   },
   {
-    path: '/interviews',
-    label: 'Interviews',
-    icon: MessageSquare,
-    description: 'Qualitative evidence'
-  },
-  {
-    path: '/controls',
-    label: 'Annex A Controls',
-    icon: Shield,
-    description: 'ISO 27001 controls'
-  },
-  {
     path: '/controls-new',
     label: 'SOA Generator',
     icon: FileCheck,
     description: 'Statement of Applicability'
-  },
-  {
-    path: '/gaps',
-    label: 'Gap Analysis',
-    icon: AlertTriangle,
-    description: 'Recommendations'
   },
   {
     path: '/ragtest',

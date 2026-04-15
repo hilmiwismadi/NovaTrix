@@ -3,6 +3,82 @@
 
 import { create } from 'zustand';
 import apiClient from '../api/client';
+import useSOAStore from './soaStore';
+
+const extractSummaryObject = (input) => {
+  if (!input) return null;
+  if (typeof input === 'object') return input;
+
+  const text = String(input).trim();
+  if (!text) return null;
+
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && typeof parsed === 'object') return parsed;
+  } catch {
+    // ignore and continue
+  }
+
+  let depth = 0;
+  let start = -1;
+  let inString = false;
+  let escaped = false;
+  let candidate = null;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === '\\') escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+    if (ch === '{') {
+      if (depth === 0) start = i;
+      depth += 1;
+      continue;
+    }
+    if (ch === '}') {
+      depth -= 1;
+      if (depth === 0 && start >= 0) {
+        const segment = text.slice(start, i + 1);
+        try {
+          candidate = JSON.parse(segment);
+        } catch {
+          // ignore invalid segment
+        }
+        start = -1;
+      }
+    }
+  }
+
+  return candidate;
+};
+
+const normalizeParsedSummary = (raw) => {
+  const obj = extractSummaryObject(raw);
+  if (!obj) return null;
+
+  const retrievedControls = Array.isArray(obj.retrieved_controls)
+    ? obj.retrieved_controls.map((item) => ({
+        id: item?.id || '-',
+        score: Number(item?.score || 0)
+      }))
+    : [];
+
+  return {
+    controlId: String(obj.control_id || '-'),
+    applicable: String(obj.applicable || '-'),
+    implementationStatus: String(obj.implementation_status || '-'),
+    justification: String(obj.justification || '-'),
+    recommendation: String(obj.recommendation || '-'),
+    retrievedControls
+  };
+};
 
 const useAnnotationStore = create((set, get) => ({
   // State
@@ -10,8 +86,12 @@ const useAnnotationStore = create((set, get) => ({
   isLoading: false,
   error: null,
 
-  parseControlIdFromSummary: (summary = '') => {
-    const match = summary.match(/\*\*Control ID:\*\*\s*([A-Za-z0-9\.\-]+)/i);
+  parseControlIdFromSummary: (summary = '', parsedSummary = null) => {
+    const normalized = normalizeParsedSummary(parsedSummary || summary);
+    if (normalized?.controlId && normalized.controlId !== '-') {
+      return normalized.controlId;
+    }
+    const match = String(summary).match(/\*\*Control ID:\*\*\s*([A-Za-z0-9.-]+)/i);
     return match ? match[1].trim() : null;
   },
 
@@ -60,10 +140,11 @@ const useAnnotationStore = create((set, get) => ({
     }
   },
 
-  createAnnotationFromRag: async ({ documentId, selectedText, position, pageNumber, summary, rawOutput, elapsedMs }) => {
+  createAnnotationFromRag: async ({ documentId, selectedText, position, pageNumber, summary, parsedSummary, rawOutput, elapsedMs }) => {
     set({ isLoading: true, error: null });
     try {
-      const controlId = get().parseControlIdFromSummary(summary);
+      const normalizedSummary = normalizeParsedSummary(parsedSummary || summary);
+      const controlId = get().parseControlIdFromSummary(summary, normalizedSummary);
       const payload = {
         documentId,
         content: selectedText,
@@ -71,6 +152,7 @@ const useAnnotationStore = create((set, get) => ({
         pageNumber,
         color: '#ADD8E6',
         summary,
+        ragParsedSummary: normalizedSummary || null,
         ragRawOutput: rawOutput || null,
         ragElapsedMs: elapsedMs || null,
         ragStatus: 'success',
@@ -84,13 +166,26 @@ const useAnnotationStore = create((set, get) => ({
         content: response.data.annotation.highlightedText,
         position: response.data.annotation.positionData,
         pageNumber: JSON.parse(response.data.annotation.positionData).pageNumber,
-        summary: response.data.annotation.summary || summary
+        summary: response.data.annotation.summary || summary,
+        parsedSummary: normalizeParsedSummary(
+          response.data.annotation.ragParsedSummary || normalizedSummary || response.data.annotation.summary || summary
+        )
       };
 
       set((state) => ({
         annotations: [mappedAnnotation, ...state.annotations],
         isLoading: false
       }));
+
+      if (normalizedSummary?.controlId && normalizedSummary.controlId !== '-') {
+        await useSOAStore.getState().syncFromAnnotation({
+          controlId: normalizedSummary.controlId,
+          applicable: normalizedSummary.applicable,
+          implementationStatus: normalizedSummary.implementationStatus,
+          justification: normalizedSummary.justification,
+          recommendation: normalizedSummary.recommendation
+        });
+      }
 
       return { success: true, data: mappedAnnotation };
     } catch (error) {

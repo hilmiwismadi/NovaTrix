@@ -1,7 +1,7 @@
 // Document Detail View
 // PDF viewer with annotation panel (Feature 3)
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Loader2, FileText, ChevronDown, ChevronUp, Edit2, Save, X } from 'lucide-react';
 import Button from '../components/common/Button';
@@ -26,6 +26,7 @@ export default function DocumentDetailView() {
   const [titleText, setTitleText] = useState('');
   const [isRagOpen, setIsRagOpen] = useState(false);
   const [ragJobs, setRagJobs] = useState([]);
+  const [timerTick, setTimerTick] = useState(0);
 
   // Stores
   const { currentDocument, isLoading: docLoading, fetchDocumentBySlug, getPDFUrl, updateDocument } = useDocumentStore();
@@ -78,6 +79,15 @@ export default function DocumentDetailView() {
       }
     }
   }, [searchParams, annotations]);
+
+  useEffect(() => {
+    const hasRunningJobs = ragJobs.some((j) => ['indexing', 'generating', 'saving'].includes(j.state));
+    if (!hasRunningJobs) return undefined;
+    const timerId = setInterval(() => {
+      setTimerTick(Date.now());
+    }, 250);
+    return () => clearInterval(timerId);
+  }, [ragJobs]);
 
   // Handle annotation creation
   const handleAnnotationCreate = async (annotationData) => {
@@ -156,6 +166,7 @@ export default function DocumentDetailView() {
       }
 
       const ragMessage = response.data.output || '';
+      const parsedSummary = response.data.parsedSummary || null;
       const elapsedMs = response.data.processingTimeMs || (Date.now() - startedAt);
       setRagJobs((prev) => prev.map((j) => (
         j.id === jobId ? { ...j, response: ragMessage, elapsedMs, state: 'saving' } : j
@@ -167,6 +178,7 @@ export default function DocumentDetailView() {
         position,
         pageNumber,
         summary: ragMessage,
+        parsedSummary,
         rawOutput: ragMessage,
         elapsedMs
       });
@@ -446,6 +458,7 @@ export default function DocumentDetailView() {
             isOpen={isRagOpen}
             onClose={() => setIsRagOpen(false)}
             jobs={ragJobs}
+            nowTs={timerTick}
           />
         </div>
 

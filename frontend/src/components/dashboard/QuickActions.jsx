@@ -22,7 +22,7 @@ export default function QuickActions() {
     {
       label: 'View SOA',
       icon: FileCheck,
-      onClick: () => navigate('/soa'),
+      onClick: () => navigate('/controls-new'),
       variant: 'secondary'
     },
     {

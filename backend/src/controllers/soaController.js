@@ -213,6 +213,78 @@ export const updateSOAEntry = async (req, res) => {
 };
 
 /**
+ * POST /api/soa/sync-from-annotation
+ * Sync SOA entry from annotation AI summary output
+ */
+export const syncSOAFromAnnotation = async (req, res) => {
+  try {
+    const { controlId, applicable, implementationStatus, justification, recommendation } = req.body;
+
+    if (!controlId) {
+      return res.status(400).json({
+        error: 'Validation error',
+        message: 'controlId is required'
+      });
+    }
+
+    const existingEntry = await prisma.sOAEntry.findUnique({
+      where: { controlId }
+    });
+
+    if (!existingEntry) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'SOA entry not found for control'
+      });
+    }
+
+    const mapApplicable = (value) => {
+      const v = String(value || '').toLowerCase();
+      if (v === 'yes' || v === 'applicable') return 'applicable';
+      if (v === 'no' || v === 'not-applicable') return 'not-applicable';
+      return 'not-determined';
+    };
+    const mapImplementationStatus = (value) => {
+      const v = String(value || '').toLowerCase();
+      if (v === 'implemented') return 'implemented';
+      if (v === 'partially implemented' || v === 'partially-implemented') return 'partially-implemented';
+      if (v === 'not implemented' || v === 'not-implemented') return 'not-implemented';
+      return 'planned';
+    };
+
+    const updated = await prisma.sOAEntry.update({
+      where: { id: existingEntry.id },
+      data: {
+        applicability: mapApplicable(applicable),
+        implementationStatus: mapImplementationStatus(implementationStatus),
+        ...(justification !== undefined && { justification }),
+        ...(recommendation !== undefined && { implementationMethod: recommendation })
+      },
+      include: {
+        control: {
+          select: {
+            id: true,
+            title: true,
+            category: true
+          }
+        }
+      }
+    });
+
+    return res.json({
+      entry: updated,
+      message: 'SOA entry synced from annotation successfully'
+    });
+  } catch (error) {
+    console.error('Sync SOA from annotation error:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to sync SOA entry from annotation'
+    });
+  }
+};
+
+/**
  * GET /api/soa/evidence/:controlId
  * Get detailed evidence for a specific control
  */

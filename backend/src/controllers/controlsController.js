@@ -159,11 +159,15 @@ export const getControlById = async (req, res) => {
  */
 export const getControlStats = async (req, res) => {
   try {
-    // Fetch all controls
     const controls = await prisma.annexAControl.findMany({
       select: {
         status: true,
         rating: true
+      }
+    });
+    const soaEntries = await prisma.sOAEntry.findMany({
+      select: {
+        applicability: true
       }
     });
 
@@ -179,6 +183,7 @@ export const getControlStats = async (req, res) => {
     const averageScore = controls.length > 0
       ? Math.round(controls.reduce((sum, c) => sum + c.rating, 0) / controls.length)
       : 0;
+    const analyzedControls = soaEntries.filter((entry) => entry.applicability !== 'not-determined').length;
 
     res.json({
       total,
@@ -186,7 +191,8 @@ export const getControlStats = async (req, res) => {
       partial,
       nonCompliant,
       pending,
-      averageScore
+      averageScore,
+      analyzedControls
     });
 
   } catch (error) {
