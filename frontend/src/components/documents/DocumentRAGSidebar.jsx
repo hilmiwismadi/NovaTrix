@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   AlertCircle,
   CheckCircle2,
@@ -56,21 +56,36 @@ function JobCard({ job, expanded, onToggleExpand, nowTs }) {
           </div>
           {job.error && <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded p-2">{job.error}</p>}
           {job.response && <pre className="text-xs whitespace-pre-wrap bg-gray-50 border border-gray-200 rounded p-2 max-h-40 overflow-auto">{job.response}</pre>}
+          {job.timing && (
+            <div className="text-xs bg-blue-50 border border-blue-200 rounded p-2 space-y-0.5">
+              <p className="font-medium text-blue-700">Timing</p>
+              <p>T_retrieval: {(job.timing.T_retrieval_ms / 1000).toFixed(1)}s</p>
+              <p>T_generation: {(job.timing.T_generation_ms / 1000).toFixed(1)}s</p>
+              <p className="font-medium">T_total: {(job.timing.T_total_ms / 1000).toFixed(1)}s</p>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-export default function DocumentRAGSidebar({ isOpen, onClose, jobs = [], nowTs = 0 }) {
+export default function DocumentRAGSidebar({ isOpen, onClose, jobs = [] }) {
   const [isMinimized, setIsMinimized] = useState(false);
   const [expandedIds, setExpandedIds] = useState({});
+  const [nowTs, setNowTs] = useState(0);
   const activeCount = useMemo(() => jobs.filter((j) => ['indexing', 'generating', 'saving'].includes(j.state)).length, [jobs]);
+
+  useEffect(() => {
+    if (!isOpen || activeCount === 0) return undefined;
+    const id = setInterval(() => setNowTs(Date.now()), 250);
+    return () => clearInterval(id);
+  }, [isOpen, activeCount]);
 
   if (!isOpen) return null;
 
   return (
-    <aside className={`absolute right-4 top-4 z-20 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden ${isMinimized ? 'w-[320px]' : 'w-[400px] bottom-4'}`}>
+    <aside className={`absolute right-4 top-4 z-20 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden pointer-events-auto ${isMinimized ? 'w-[320px]' : 'w-[400px] max-h-[calc(100%-2rem)]'}`}>
       <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Sparkles size={18} className="text-cyan-600" />
@@ -97,7 +112,11 @@ export default function DocumentRAGSidebar({ isOpen, onClose, jobs = [], nowTs =
       </div>
 
       {!isMinimized && (
-        <div className="p-3 space-y-3 h-[calc(100%-52px)] overflow-y-auto">
+        <div
+          className="p-3 space-y-3 overflow-y-auto"
+          style={{ maxHeight: 'calc(100vh - 8rem)' }}
+          onWheel={(e) => e.stopPropagation()}
+        >
           {jobs.length === 0 && <p className="text-sm text-gray-500">No RAG jobs yet.</p>}
           {jobs.map((job) => (
             <JobCard

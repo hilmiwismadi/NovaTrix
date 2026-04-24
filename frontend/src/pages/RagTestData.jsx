@@ -21,6 +21,20 @@ export default function RagTestData() {
 
   const isCellExpanded = (rowId, field) => expandedCells.has(`${rowId}-${field}`);
 
+  const parseTiming = (detailedLog) => {
+    if (!detailedLog) return null;
+    try {
+      const parsed = JSON.parse(detailedLog);
+      return parsed.timing || null;
+    } catch {
+      const match = detailedLog.match(/"timing"\s*:\s*(\{[^}]+\})/);
+      if (match) {
+        try { return JSON.parse(match[1]); } catch { return null; }
+      }
+      return null;
+    }
+  };
+
   const copyLog = async (rowId, log) => {
     await navigator.clipboard.writeText(log || '');
     setCopiedLogId(rowId);
@@ -58,7 +72,7 @@ export default function RagTestData() {
             <table className="w-full min-w-[1200px] table-fixed text-sm">
               <colgroup>
                 <col className="w-[140px]" />
-                <col className="w-[150px]" />
+                <col className="w-[180px]" />
                 <col className="w-[90px]" />
                 <col className="w-[90px]" />
                 <col className="w-[320px]" />
@@ -83,9 +97,25 @@ export default function RagTestData() {
                       <div className="text-xs text-gray-800 leading-tight">{new Date(r.createdAt).toLocaleDateString()}</div>
                       <div className="text-[11px] text-gray-500 leading-tight mt-1">{new Date(r.createdAt).toLocaleTimeString()}</div>
                     </td>
-                    <td className="p-3 text-xs whitespace-nowrap">{r.provider || '-'}</td>
+                    <td className="p-3 text-xs">
+                      <div className="overflow-hidden text-ellipsis" title={r.provider || '-'}>{r.provider || '-'}</div>
+                      {r.model && <div className="text-[11px] text-gray-500 mt-0.5 overflow-hidden text-ellipsis" title={r.model}>{r.model}</div>}
+                    </td>
                     <td className="p-3 text-xs whitespace-nowrap">{r.status}</td>
-                    <td className="p-3 text-xs whitespace-nowrap">{r.processingTimeMs ? `${Math.round(r.processingTimeMs / 1000)}s` : '-'}</td>
+                    <td className="p-3 text-xs">
+                      <div className="font-medium">{r.processingTimeMs ? `${Math.round(r.processingTimeMs / 1000)}s (${r.processingTimeMs} ms)` : '-'}</div>
+                      {(() => {
+                        const timing = parseTiming(r.detailedLog);
+                        if (!timing) return null;
+                        return (
+                          <div className="mt-1.5 text-[11px] text-gray-500 space-y-0.5 border-t border-gray-100 pt-1.5">
+                            <p>T_retrieval: {(timing.T_retrieval_ms / 1000).toFixed(1)}s</p>
+                            <p>T_generation: {(timing.T_generation_ms / 1000).toFixed(1)}s</p>
+                            <p className="font-medium text-gray-700">T_total: {(timing.T_total_ms / 1000).toFixed(1)}s</p>
+                          </div>
+                        );
+                      })()}
+                    </td>
                     <td className="p-3">
                       <div className="relative">
                         <div

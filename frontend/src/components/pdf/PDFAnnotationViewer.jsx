@@ -1,7 +1,7 @@
 // PDF Annotation Viewer Component
 // PDF viewer with highlighting and annotation capabilities using @react-pdf-viewer
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, memo } from 'react';
 import { Viewer, Worker, SpecialZoomLevel } from '@react-pdf-viewer/core';
 import { highlightPlugin } from '@react-pdf-viewer/highlight';
 import { zoomPlugin } from '@react-pdf-viewer/zoom';
@@ -13,6 +13,14 @@ import '@react-pdf-viewer/core/lib/styles/index.css';
 import '@react-pdf-viewer/highlight/lib/styles/index.css';
 import '@react-pdf-viewer/zoom/lib/styles/index.css';
 
+const highlightStatusColors = {
+  '#FFFF00': { bg: 'rgba(255, 235, 59, 0.25)', border: 'rgba(255, 235, 59, 0.7)' },
+  '#90EE90': { bg: 'rgba(144, 238, 144, 0.25)', border: 'rgba(34, 197, 94, 0.6)' },
+  '#ADD8E6': { bg: 'rgba(173, 216, 230, 0.25)', border: 'rgba(59, 130, 246, 0.5)' },
+  '#FFB6C1': { bg: 'rgba(255, 182, 193, 0.25)', border: 'rgba(239, 68, 68, 0.5)' },
+  '#FFD580': { bg: 'rgba(255, 213, 128, 0.25)', border: 'rgba(245, 158, 11, 0.6)' },
+};
+
 // Color options for highlights with compliance status meanings
 const HIGHLIGHT_COLORS = [
   { name: 'Yellow', value: '#FFFF00', status: 'Needs Review / To Be Verified' },
@@ -22,15 +30,17 @@ const HIGHLIGHT_COLORS = [
   { name: 'Orange', value: '#FFD580', status: 'Partially Compliant / In Progress' }
 ];
 
-export default function PDFAnnotationViewer({
+function PDFAnnotationViewer({
   pdfUrl,
   annotations = [],
   selectedAnnotation,
   onAnnotationCreate,
   onAnnotationSelect,
-  onTextSelected
+  onTextSelected,
+  highlightsEnabled = true
 }) {
   const [highlightColor, setHighlightColor] = useState(HIGHLIGHT_COLORS[0].value);
+  const [internalHighlightsEnabled, setInternalHighlightsEnabled] = useState(highlightsEnabled);
   const highlightColorRef = useRef(highlightColor); // Keep ref in sync with state
   const [message, setMessage] = useState('');
   const [selectionPopup, setSelectionPopup] = useState(null); // { text, position, annotationData, x, y }
@@ -141,6 +151,8 @@ export default function PDFAnnotationViewer({
 
   // Render a highlight
   const renderHighlights = (props) => {
+    if (!internalHighlightsEnabled) return <div />;
+
     const highlightsOnPage = highlights.filter((highlight) =>
       highlight.highlightAreas.some((area) => area.pageIndex === props.pageIndex)
     );
@@ -154,33 +166,36 @@ export default function PDFAnnotationViewer({
             <div key={highlight.id}>
               {highlight.highlightAreas
                 .filter((area) => area.pageIndex === props.pageIndex)
-                .map((area, idx) => (
-                  <div
-                    key={idx}
-                    className="highlight-area cursor-pointer transition-all hover:opacity-60"
-                    style={{
-                      position: 'absolute',
-                      left: `${area.left}%`,
-                      top: `${area.top}%`,
-                      width: `${area.width}%`,
-                      height: `${area.height}%`,
-                      backgroundColor: highlight.color,
-                      opacity: 0.4,
-                      mixBlendMode: 'multiply',
-                      border: isSelected ? '2px solid #0891b2' : 'none',
-                      boxShadow: isSelected ? '0 0 0 2px rgba(8, 145, 178, 0.3)' : 'none',
-                      pointerEvents: 'auto',
-                      zIndex: isSelected ? 10 : 1,
-                    }}
-                    onClick={() => {
-                      const annotationId = parseInt(highlight.id);
-                      const annotation = annotations.find(a => a.id === annotationId);
-                      if (annotation && onAnnotationSelect) {
-                        onAnnotationSelect(annotation);
-                      }
-                    }}
-                  />
-                ))}
+                .map((area, idx) => {
+                  const colors = highlightStatusColors[highlight.color] || { bg: 'rgba(255, 235, 59, 0.25)', border: 'rgba(255, 235, 59, 0.7)' };
+                  return (
+                    <div
+                      key={idx}
+                      style={{
+                        position: 'absolute',
+                        left: `${area.left}%`,
+                        top: `${area.top}%`,
+                        width: `${area.width}%`,
+                        height: `${area.height}%`,
+                        backgroundColor: isSelected ? colors.bg.replace('0.25', '0.45') : colors.bg,
+                        borderLeft: isSelected ? '3px solid #0891b2' : `2px solid ${colors.border}`,
+                        borderRadius: '2px',
+                        transition: 'background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease',
+                        cursor: 'pointer',
+                        pointerEvents: 'auto',
+                        zIndex: isSelected ? 10 : 1,
+                        boxShadow: isSelected ? '0 0 0 1px rgba(8, 145, 178, 0.25), inset 0 0 4px rgba(8, 145, 178, 0.1)' : 'none',
+                      }}
+                      onClick={() => {
+                        const annotationId = parseInt(highlight.id);
+                        const annotation = annotations.find(a => a.id === annotationId);
+                        if (annotation && onAnnotationSelect) {
+                          onAnnotationSelect(annotation);
+                        }
+                      }}
+                    />
+                  );
+                })}
             </div>
           );
         })}
@@ -208,10 +223,11 @@ export default function PDFAnnotationViewer({
     viewerContainerRef.current = viewerContainer;
 
     const handleMouseUp = () => {
-      const selection = window.getSelection();
-      const selectedText = selection?.toString().trim();
+      setTimeout(() => {
+        const selection = window.getSelection();
+        const selectedText = selection?.toString().trim();
 
-      if (!selectedText || selectedText.length === 0) return;
+        if (!selectedText || selectedText.length === 0) return;
 
       // Get the range and its position
       const range = selection.getRangeAt(0);
@@ -298,6 +314,7 @@ export default function PDFAnnotationViewer({
           position
         });
       }
+    }, 0);
     };
 
     mouseUpHandlerRef.current = handleMouseUp;
@@ -336,8 +353,8 @@ export default function PDFAnnotationViewer({
 
   // Close popup when clicking outside
   useEffect(() => {
-    const handleClickOutside = () => {
-      if (selectionPopup) {
+    const handleClickOutside = (e) => {
+      if (selectionPopup && !e.target.closest('.selection-popup')) {
         setSelectionPopup(null);
         window.getSelection()?.removeAllRanges();
       }
@@ -352,7 +369,7 @@ export default function PDFAnnotationViewer({
       {/* Text Selection Popup */}
       {selectionPopup && (
         <div
-          className="fixed z-50 bg-white rounded-lg shadow-2xl border border-gray-300 flex gap-1 p-1"
+          className="fixed z-50 bg-white rounded-lg shadow-2xl border border-gray-300 flex gap-1 p-1 selection-popup"
           style={{
             left: `${selectionPopup.x}px`,
             top: `${selectionPopup.y}px`,
@@ -418,10 +435,19 @@ export default function PDFAnnotationViewer({
         </div>
       </div>
 
-      {/* Color Picker */}
+      {/* Color Picker & Highlight Toggle */}
       <div className="absolute top-4 right-4 z-10 bg-white rounded-lg shadow-lg p-3 border border-gray-200">
-        <p className="text-xs font-medium text-gray-700 mb-2">Compliance Status</p>
-        <div className="flex gap-2">
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-medium text-gray-700">Compliance Status</p>
+          <button
+            onClick={() => setInternalHighlightsEnabled((v) => !v)}
+            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 ${internalHighlightsEnabled ? 'bg-cyan-600' : 'bg-gray-300'}`}
+            title={internalHighlightsEnabled ? 'Hide highlights' : 'Show highlights'}
+          >
+            <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform duration-200 ${internalHighlightsEnabled ? 'translate-x-4.5' : 'translate-x-1'}`} />
+          </button>
+        </div>
+        <div className={`flex gap-2 transition-opacity duration-200 ${internalHighlightsEnabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
           {HIGHLIGHT_COLORS.map((color) => (
             <button
               key={color.value}
@@ -459,3 +485,5 @@ export default function PDFAnnotationViewer({
     </div>
   );
 }
+
+export default memo(PDFAnnotationViewer);

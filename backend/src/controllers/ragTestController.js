@@ -33,13 +33,14 @@ export const runRagTest = async (req, res) => {
 
     const startedAt = Date.now();
     const result = await sendRagMessage(query, [], `ragtest-${run.id}`, { provider, model });
-    const elapsedMs = result.processingTime || (Date.now() - startedAt);
+    const totalElapsedMs = Date.now() - startedAt;
+    const llmProcessingMs = result.processingTime || null;
 
     const updated = await prisma.ragTestRun.update({
       where: { id: run.id },
       data: {
         outputText: result.success ? result.message : null,
-        processingTimeMs: elapsedMs,
+        processingTimeMs: totalElapsedMs,
         status: result.success ? 'success' : 'failed',
         errorMessage: result.success ? null : result.error,
         detailedLog: result.rawOutput || (result.success ? 'Completed without raw logs.' : 'No detailed log returned by provider.'),
@@ -52,6 +53,8 @@ export const runRagTest = async (req, res) => {
       status: updated.status,
       output: updated.outputText,
       processingTimeMs: updated.processingTimeMs,
+      llmInferenceMs: llmProcessingMs,
+      timing: result.timing || null,
       error: updated.errorMessage,
       detailedLog: updated.detailedLog,
       provider: updated.provider,

@@ -26,7 +26,7 @@ export default function DocumentDetailView() {
   const [titleText, setTitleText] = useState('');
   const [isRagOpen, setIsRagOpen] = useState(false);
   const [ragJobs, setRagJobs] = useState([]);
-  const [timerTick, setTimerTick] = useState(0);
+  const [autoOpenDetailsId, setAutoOpenDetailsId] = useState(null);
 
   // Stores
   const { currentDocument, isLoading: docLoading, fetchDocumentBySlug, getPDFUrl, updateDocument } = useDocumentStore();
@@ -79,15 +79,6 @@ export default function DocumentDetailView() {
       }
     }
   }, [searchParams, annotations]);
-
-  useEffect(() => {
-    const hasRunningJobs = ragJobs.some((j) => ['indexing', 'generating', 'saving'].includes(j.state));
-    if (!hasRunningJobs) return undefined;
-    const timerId = setInterval(() => {
-      setTimerTick(Date.now());
-    }, 250);
-    return () => clearInterval(timerId);
-  }, [ragJobs]);
 
   // Handle annotation creation
   const handleAnnotationCreate = async (annotationData) => {
@@ -168,8 +159,9 @@ export default function DocumentDetailView() {
       const ragMessage = response.data.output || '';
       const parsedSummary = response.data.parsedSummary || null;
       const elapsedMs = response.data.processingTimeMs || (Date.now() - startedAt);
+      const ragTiming = response.data.timing || null;
       setRagJobs((prev) => prev.map((j) => (
-        j.id === jobId ? { ...j, response: ragMessage, elapsedMs, state: 'saving' } : j
+        j.id === jobId ? { ...j, response: ragMessage, elapsedMs, state: 'saving', timing: ragTiming } : j
       )));
 
       const ragAnnotationResult = await createAnnotationFromRag({
@@ -185,6 +177,7 @@ export default function DocumentDetailView() {
 
       if (ragAnnotationResult.success && ragAnnotationResult.data) {
         setSelectedAnnotation(ragAnnotationResult.data);
+        setAutoOpenDetailsId(ragAnnotationResult.data.id);
         setRagJobs((prev) => prev.map((j) => (
           j.id === jobId ? { ...j, state: 'done', elapsedMs } : j
         )));
@@ -458,7 +451,6 @@ export default function DocumentDetailView() {
             isOpen={isRagOpen}
             onClose={() => setIsRagOpen(false)}
             jobs={ragJobs}
-            nowTs={timerTick}
           />
         </div>
 
@@ -472,6 +464,8 @@ export default function DocumentDetailView() {
             onAnnotationDelete={handleAnnotationDelete}
             onControlAdd={handleControlAdd}
             onControlRemove={handleControlRemove}
+            autoOpenDetailsId={autoOpenDetailsId}
+            onDetailsOpened={() => setAutoOpenDetailsId(null)}
           />
         </div>
       </div>

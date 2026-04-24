@@ -6,11 +6,14 @@ export default function RagTest() {
   const [query, setQuery] = useState('');
   const [result, setResult] = useState('');
   const [elapsed, setElapsed] = useState(null);
+  const [llmTime, setLlmTime] = useState(null);
   const [log, setLog] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [provider, setProvider] = useState('API');
   const [model, setModel] = useState('google/gemma-3-12b-it:free');
+  const [responseModel, setResponseModel] = useState(null);
+  const [timing, setTiming] = useState(null);
   const [startedAt, setStartedAt] = useState(null);
   const [liveElapsed, setLiveElapsed] = useState(0);
 
@@ -31,6 +34,9 @@ export default function RagTest() {
     setError('');
     setResult('');
     setElapsed(null);
+    setLlmTime(null);
+    setResponseModel(null);
+    setTiming(null);
     setLog('');
 
     try {
@@ -38,6 +44,9 @@ export default function RagTest() {
       setResult(response.data.output || '');
       const finishedElapsed = response.data.processingTimeMs || (Date.now() - started);
       setElapsed(finishedElapsed);
+      setLlmTime(response.data.llmInferenceMs || null);
+      setResponseModel(response.data.model || null);
+      setTiming(response.data.timing || null);
       setLiveElapsed(finishedElapsed);
       setLog(response.data.detailedLog || 'No detailed log returned.');
       if (response.data.error) setError(response.data.error);
@@ -104,7 +113,10 @@ export default function RagTest() {
         </Card>
         <Card className="p-5">
           <h2 className="text-sm font-semibold text-gray-700 mb-2">Runtime</h2>
-          <p className="text-sm text-gray-800">Provider: {provider}</p>
+          <p className="text-sm text-gray-800">
+            Provider: {provider}
+            {!isLoading && responseModel ? ` (${responseModel})` : isLoading ? ' (processing...)' : ''}
+          </p>
           <p className="text-sm text-gray-800">
             Elapsed: {isLoading
               ? `${Math.round(liveElapsed / 1000)}s (${liveElapsed} ms)`
@@ -112,6 +124,20 @@ export default function RagTest() {
                 ? `${Math.round(elapsed / 1000)}s (${elapsed} ms)`
                 : '-'}
           </p>
+          {!isLoading && llmTime !== null && (
+            <p className="text-sm text-gray-600">
+              LLM Inference: {Math.round(llmTime / 1000)}s ({llmTime} ms)
+            </p>
+          )}
+          {!isLoading && timing && (
+            <div className="mt-3 p-3 bg-gray-50 rounded-lg text-sm space-y-1">
+              <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Timing Breakdown</p>
+              <p className="text-gray-700">T_retrieval: {(timing.T_retrieval_ms / 1000).toFixed(1)}s ({timing.T_retrieval_ms} ms)</p>
+              <p className="text-gray-700">T_generation: {(timing.T_generation_ms / 1000).toFixed(1)}s ({timing.T_generation_ms} ms)</p>
+              <p className="text-gray-900 font-medium">T_total: {(timing.T_total_ms / 1000).toFixed(1)}s ({timing.T_total_ms} ms)</p>
+              <p className="text-xs text-gray-500 mt-1">T_total = T_retrieval + T_generation</p>
+            </div>
+          )}
           {error && <p className="text-sm text-red-600 mt-2">Error: {error}</p>}
         </Card>
       </div>

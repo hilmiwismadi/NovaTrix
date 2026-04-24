@@ -59,9 +59,14 @@ const normalizeEnum = (value, allowed, fallback) => {
 
 const ensureStrictRagJson = (candidate, retrievedControls = []) => {
   const validControlPattern = /^A\.[5-8]\.\d+$/i;
-  const topControl = retrievedControls[0]?.control_id || 'A.5.1';
+  const sortedControls = [...(retrievedControls || [])].sort((a, b) => (b.similarity_score || 0) - (a.similarity_score || 0));
+  const topControl = sortedControls[0]?.control_id || 'A.5.1';
   const controlIdRaw = String(candidate?.control_id || '').trim();
-  const control_id = validControlPattern.test(controlIdRaw) ? controlIdRaw : topControl;
+  const retrievedIds = retrievedControls.map((r) => r.control_id);
+  const isValidRetrieved = retrievedIds.includes(controlIdRaw);
+  const control_id = (validControlPattern.test(controlIdRaw) && isValidRetrieved) ? controlIdRaw
+    : validControlPattern.test(controlIdRaw) ? controlIdRaw
+    : topControl;
   const applicable = normalizeEnum(candidate?.applicable, ['Yes', 'No'], 'Yes');
   const implementation_status = normalizeEnum(
     candidate?.implementation_status,
@@ -146,9 +151,12 @@ const extractJsonObjectFromText = (text) => {
 
 const runPythonWithStdin = (script, stdinText) => new Promise((resolve, reject) => {
   const ragTimeout = getRagTimeout();
+  const env = { ...process.env };
+  if (!env.HF_TOKEN && process.env.HF_TOKEN) env.HF_TOKEN = process.env.HF_TOKEN;
   const child = spawn(getRagPythonCmd(), ['-c', script], {
     cwd: getRagProjectPath(),
-    windowsHide: true
+    windowsHide: true,
+    env
   });
 
   let stdout = '';
@@ -378,7 +386,9 @@ const runOpenRouterRag = async (userMessage, options = {}) => {
     };
   }
 
+  const retrievalStart = Date.now();
   const retrieval = await runSharedRetrieval(userMessage);
+  const retrievalMs = Date.now() - retrievalStart;
   if (!retrieval.success) {
     return {
       success: false,
@@ -469,20 +479,38 @@ Aturan wajib:
 
   const parsed = extractJsonObjectFromText(message);
   const strictJson = ensureStrictRagJson(parsed || {}, retrieval.retrieved);
+  const generationMs = Date.now() - startTime;
+  const topRetrieved = [...(retrieval.retrieved || [])].sort((a, b) => (b.similarity_score || 0) - (a.similarity_score || 0))[0]?.control_id || 'N/A';
 
   return {
     success: true,
     message: JSON.stringify(strictJson, null, 2),
     model: usedModel,
     provider: 'API',
-    processingTime: Date.now() - startTime,
+    processingTime: generationMs,
     rawOutput: JSON.stringify({
       providerResponse: response.data,
-      retrieved: retrieval.retrieved
+      retrieved: retrieval.retrieved,
+      controlSelection: {
+        llm_chosen: strictJson.control_id,
+        top_retrieved: topRetrieved,
+        note: strictJson.control_id !== topRetrieved ? 'LLM selected a different control than top retrieval (semantic reasoning)' : 'LLM agreed with top retrieval'
+      },
+      timing: {
+        T_retrieval_ms: retrievalMs,
+        T_generation_ms: generationMs,
+        T_total_ms: retrievalMs + generationMs,
+        model_used: usedModel
+      }
     }),
     parsedResult: {
       ...strictJson,
       _retrieved_controls: retrieval.retrieved
+    },
+    timing: {
+      T_retrieval_ms: retrievalMs,
+      T_generation_ms: generationMs,
+      T_total_ms: retrievalMs + generationMs
     }
   };
 };

@@ -1,7 +1,7 @@
 // Annotation Panel Component
 // Sidebar panel for managing annotations and tagging with controls
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Tag, Trash2, Plus, Check, Info, Copy, Filter } from 'lucide-react';
 import Button from '../common/Button';
 import Badge from '../common/Badge';
@@ -16,9 +16,9 @@ const parseAiSummary = (summary = '') => {
       justification: summary.justification || '',
       recommendation: summary.recommendation || '',
       retrievedControls: Array.isArray(summary.retrievedControls)
-        ? summary.retrievedControls.map((item) => `${item.id} (score: ${Number(item.score || 0).toFixed(4)})`)
+        ? summary.retrievedControls.map((item) => ({ id: item.id, score: Number(item.score || 0) }))
         : Array.isArray(summary.retrieved_controls)
-          ? summary.retrieved_controls.map((item) => `${item.id} (score: ${Number(item.score || 0).toFixed(4)})`)
+          ? summary.retrieved_controls.map((item) => ({ id: item.id, score: Number(item.score || 0) }))
           : []
     };
   }
@@ -45,7 +45,12 @@ const parseAiSummary = (summary = '') => {
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.startsWith('-'))
-    .map((line) => line.replace(/^-+\s*/, ''));
+    .map((line) => {
+      const cleaned = line.replace(/^-+\s*/, '');
+      const idMatch = cleaned.match(/^([A-Za-z0-9.-]+)/);
+      const scoreMatch = cleaned.match(/score:\s*([\d.]+)/);
+      return { id: idMatch ? idMatch[1] : cleaned, score: scoreMatch ? parseFloat(scoreMatch[1]) : 0 };
+    });
 
   return {
     controlId,
@@ -65,13 +70,22 @@ export default function AnnotationPanel({
   onAnnotationDelete,
   onControlAdd,
   onControlRemove,
-  onClose
+  onClose,
+  autoOpenDetailsId = null,
+  onDetailsOpened = null
 }) {
   const [showControlPicker, setShowControlPicker] = useState(false);
   const [searchControl, setSearchControl] = useState('');
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const [filterByControl, setFilterByControl] = useState('ALL');
+
+  useEffect(() => {
+    if (autoOpenDetailsId && selectedAnnotation?.id === autoOpenDetailsId) {
+      setShowDetailsModal(true);
+      if (onDetailsOpened) onDetailsOpened();
+    }
+  }, [autoOpenDetailsId]);
 
   const handleCopyText = (text, annotationId) => {
     navigator.clipboard.writeText(text);
@@ -109,6 +123,13 @@ export default function AnnotationPanel({
     } else {
       onControlAdd(selectedAnnotation.id, controlId);
     }
+  };
+
+  const handleOpenControlPicker = () => {
+    if (autoDetectedControlId && !linkedControlIds.includes(autoDetectedControlId)) {
+      onControlAdd(selectedAnnotation.id, autoDetectedControlId);
+    }
+    setShowControlPicker(true);
   };
 
   return (
@@ -270,7 +291,7 @@ export default function AnnotationPanel({
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setShowControlPicker(!showControlPicker);
+                        handleOpenControlPicker();
                       }}
                       className="flex items-center gap-2 text-xs flex-1"
                     >
@@ -300,16 +321,13 @@ export default function AnnotationPanel({
       {/* Control Picker Modal */}
       {showControlPicker && selectedAnnotation && (
         <>
-          {/* Backdrop */}
           <div
-            className="fixed inset-0 bg-black bg-opacity-30 z-40"
+            className="fixed inset-0 bg-black/20 backdrop-blur-[1px] z-40"
             onClick={() => setShowControlPicker(false)}
           />
 
-          {/* Modal */}
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
-            <div className="bg-white rounded-lg shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col pointer-events-auto">
-              {/* Header */}
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[80vh] flex flex-col pointer-events-auto">
               <div className="p-4 border-b border-gray-200 flex-shrink-0">
                 <div className="flex justify-between items-center mb-3">
                   <h3 className="text-lg font-bold text-gray-900">Tag Annex A Control</h3>
@@ -331,46 +349,80 @@ export default function AnnotationPanel({
                 />
               </div>
 
-              {/* Controls List */}
-              <div className="flex-1 overflow-y-auto">
-                {filteredControls.length === 0 ? (
-                  <div className="p-8 text-center text-gray-500">
-                    <p className="text-sm">No controls found</p>
-                    <p className="text-xs mt-1">Try a different search term</p>
-                  </div>
-                ) : (
-                  filteredControls.map((control) => {
-                    const isLinked = linkedControlIds.includes(control.id);
-                    return (
-                      <div
-                        key={control.id}
-                        className={`p-3 border-b border-gray-200 cursor-pointer transition-colors ${
-                          isLinked ? 'bg-cyan-50 hover:bg-cyan-100' : 'hover:bg-gray-50'
-                        }`}
-                        onClick={() => handleControlToggle(control.id)}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
-                            isLinked ? 'border-cyan-600 bg-cyan-600' : 'border-gray-300'
-                          }`}>
-                            {isLinked && <Check size={14} className="text-white" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm text-gray-900">
-                              {control.id}
-                            </p>
-                            <p className="text-xs text-gray-600 line-clamp-2">
-                              {control.title}
-                            </p>
+              <div className="flex-1 grid grid-cols-5 overflow-hidden min-h-0">
+                <div className="col-span-2 border-r border-gray-200 overflow-y-auto">
+                  {filteredControls.length === 0 ? (
+                    <div className="p-8 text-center text-gray-500">
+                      <p className="text-sm">No controls found</p>
+                      <p className="text-xs mt-1">Try a different search term</p>
+                    </div>
+                  ) : (
+                    filteredControls.map((control) => {
+                      const isLinked = linkedControlIds.includes(control.id);
+                      const isAutoDetected = autoDetectedControlId === control.id;
+                      return (
+                        <div
+                          key={control.id}
+                          className={`p-3 border-b border-gray-100 cursor-pointer transition-colors ${
+                            isLinked ? 'bg-cyan-50 hover:bg-cyan-100' : 'hover:bg-gray-50'
+                          }`}
+                          onClick={() => handleControlToggle(control.id)}
+                        >
+                          <div className="flex items-start gap-2">
+                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                              isLinked ? 'border-cyan-600 bg-cyan-600' : 'border-gray-300'
+                            }`}>
+                              {isLinked && <Check size={10} className="text-white" />}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <p className="font-medium text-xs text-gray-900">{control.id}</p>
+                                {isAutoDetected && (
+                                  <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded">AI</span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-gray-600 line-clamp-1">{control.title}</p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })
-                )}
+                      );
+                    })
+                  )}
+                </div>
+
+                <div className="col-span-3 p-4 overflow-y-auto">
+                  {linkedControlIds.length > 0 ? (
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-semibold text-gray-500 uppercase">Tagged Controls</h4>
+                      {linkedControlIds.map((cId) => {
+                        const ctrl = controls.find((c) => c.id === cId);
+                        return (
+                          <div key={cId} className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="font-semibold text-sm text-gray-900">{cId}</span>
+                              <button
+                                onClick={() => handleControlToggle(cId)}
+                                className="text-xs text-red-500 hover:text-red-700 px-2 py-1 hover:bg-red-50 rounded"
+                              >
+                                Remove
+                              </button>
+                            </div>
+                            <p className="text-sm text-gray-700 font-medium">{ctrl?.title || 'Unknown'}</p>
+                            {ctrl?.description && (
+                              <p className="text-xs text-gray-600 mt-1 line-clamp-4">{ctrl.description}</p>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-gray-400">
+                      <p className="text-sm">Select controls from the left panel</p>
+                    </div>
+                  )}
+                </div>
               </div>
 
-              {/* Footer */}
               <div className="p-4 border-t border-gray-200 bg-gray-50 flex-shrink-0">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs text-gray-600">
@@ -440,11 +492,18 @@ export default function AnnotationPanel({
                     <label className="text-xs font-semibold text-gray-500 uppercase">Retrieved Controls</label>
                     <div className="mt-2 p-3 bg-white rounded border border-gray-200 h-56 overflow-y-auto space-y-2">
                       {retrievedControlRows.length > 0 ? (
-                        retrievedControlRows.map((row, idx) => (
-                          <div key={`${row}-${idx}`} className="text-sm text-gray-900 bg-cyan-50 border border-cyan-100 rounded p-2">
-                            {row}
-                          </div>
-                        ))
+                        retrievedControlRows.map((row, idx) => {
+                          const ctrl = controls.find((c) => c.id === row.id);
+                          return (
+                            <div key={`${row.id}-${idx}`} className="text-sm text-gray-900 bg-cyan-50 border border-cyan-100 rounded p-2">
+                              <span className="font-medium">{row.id}</span>
+                              <span className="text-gray-500 ml-2">(score: {Number(row.score).toFixed(4)})</span>
+                              {ctrl && (
+                                <div className="text-xs text-gray-600 mt-0.5">{ctrl.title}</div>
+                              )}
+                            </div>
+                          );
+                        })
                       ) : (
                         <p className="text-sm text-gray-500">No retrieved controls.</p>
                       )}
